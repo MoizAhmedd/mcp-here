@@ -1,0 +1,1 @@
+{"name":"Sentry","description":"Connect to Sentry, debug faster.","url":"https://mcp.sentry.dev/mcp","provider":{"name":"Sentry","url":"https://sentry.io"},"authentication":{"type":"oauth2","authorization_server":"https://sentry.io"}}

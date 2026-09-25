@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>MCP Here</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <img src="icons/icon-48.png" alt="" width="24" height="24" />
+      <div>
+        <div id="domain" class="domain">Checking…</div>
+        <div id="summary" class="summary"></div>
+      </div>
+    </header>
+    <main id="servers"></main>
+    <template id="server-template">
+      <section class="server">
+        <div class="server-head">
+          <span class="title"></span>
+          <span class="source"></span>
+        </div>
+        <p class="description"></p>
+        <div class="split">
+          <button class="primary" type="button"></button>
+          <button class="toggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Choose app">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="menu" role="menu" hidden></div>
+        </div>
+        <pre class="preview"></pre>
+        <p class="hint"></p>
+      </section>
+    </template>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
