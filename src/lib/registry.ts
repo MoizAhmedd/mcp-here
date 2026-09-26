@@ -14,6 +14,13 @@ export function lookup(index: RegistryIndex, domain: string): McpServer[] {
   return lookupDomains(domain).flatMap((d) => index.domains[d] ?? []);
 }
 
+/** Add servers found by crawling sites' own `/.well-known` files, ahead of registry entries. */
+export function mergeSiteServers(index: RegistryIndex, found: Record<string, McpServer[]>): RegistryIndex {
+  const domains = { ...index.domains };
+  for (const [domain, servers] of Object.entries(found)) domains[domain] = [...servers, ...(domains[domain] ?? [])];
+  return { ...index, domains };
+}
+
 export function isRegistryIndex(value: unknown): value is RegistryIndex {
   const index = value as RegistryIndex;
   return typeof index?.generatedAt === 'string' && typeof index.domains === 'object' && index.domains !== null;

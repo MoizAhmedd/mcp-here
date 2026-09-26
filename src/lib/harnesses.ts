@@ -8,7 +8,7 @@ export type Action =
 export interface Harness {
   id: string;
   label: string;
-  /** Where the copied text goes, or what happens after the link opens. */
+  /** Shown after the action runs: where the copied text goes, or what to do in the app. */
   hint: string;
   build(server: NamedServer): Action | undefined;
 }
@@ -51,7 +51,7 @@ export const HARNESSES: Harness[] = [
   {
     id: 'claude-code',
     label: 'Claude Code',
-    hint: 'Run in your terminal. Adds it for all projects.',
+    hint: 'Paste it in your terminal.',
     build: ({ slug, install }) => ({
       type: 'copy',
       text:
@@ -62,8 +62,8 @@ export const HARNESSES: Harness[] = [
   },
   {
     id: 'claude',
-    label: 'Claude app',
-    hint: 'URL copied. In Claude, click "Add custom connector" and paste it.',
+    label: 'Claude',
+    hint: 'URL copied. Click "Add custom connector" and paste it.',
     build: ({ install }) =>
       install.kind === 'remote' && !install.headers.length
         ? { type: 'open', url: 'https://claude.ai/customize/connectors', preview: install.url, copy: install.url }
@@ -72,7 +72,7 @@ export const HARNESSES: Harness[] = [
   {
     id: 'cursor',
     label: 'Cursor',
-    hint: 'Opens Cursor to confirm the install.',
+    hint: 'Confirm the install in Cursor.',
     build: ({ slug, install }) => {
       const config = serverConfig(install);
       const url = `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(slug)}&config=${encodeURIComponent(base64(JSON.stringify(config)))}`;
@@ -82,7 +82,7 @@ export const HARNESSES: Harness[] = [
   {
     id: 'vscode',
     label: 'VS Code',
-    hint: 'Opens VS Code to confirm the install.',
+    hint: 'Confirm the install in VS Code.',
     build: ({ slug, install }) => {
       const config =
         install.kind === 'remote'
@@ -94,7 +94,7 @@ export const HARNESSES: Harness[] = [
   {
     id: 'codex',
     label: 'Codex',
-    hint: 'Run in your terminal.',
+    hint: 'Paste it in your terminal.',
     build: ({ slug, install }) => ({
       type: 'copy',
       text:
@@ -106,7 +106,7 @@ export const HARNESSES: Harness[] = [
   {
     id: 'gemini',
     label: 'Gemini CLI',
-    hint: 'Run in your terminal. Adds it for all projects.',
+    hint: 'Paste it in your terminal.',
     build: ({ slug, install }) => ({
       type: 'copy',
       text:
@@ -118,13 +118,13 @@ export const HARNESSES: Harness[] = [
   {
     id: 'windsurf',
     label: 'Windsurf',
-    hint: 'Merge into ~/.codeium/windsurf/mcp_config.json.',
+    hint: 'Add it to ~/.codeium/windsurf/mcp_config.json.',
     build: ({ slug, install }) => ({ type: 'copy', text: json({ mcpServers: { [slug]: serverConfig(install, 'serverUrl') } }) }),
   },
   {
     id: 'goose',
     label: 'Goose',
-    hint: 'Opens Goose to confirm the install.',
+    hint: 'Confirm the install in Goose.',
     build: ({ slug, title, description, install }) => {
       const params = new URLSearchParams({ id: slug, name: title, description: description ?? title });
       if (install.kind === 'remote') {
@@ -141,7 +141,7 @@ export const HARNESSES: Harness[] = [
   {
     id: 'lmstudio',
     label: 'LM Studio',
-    hint: 'Opens LM Studio to confirm the install.',
+    hint: 'Confirm the install in LM Studio.',
     build: ({ slug, install }) => {
       const config = serverConfig(install);
       const url = `lmstudio://add_mcp?name=${encodeURIComponent(slug)}&config=${encodeURIComponent(base64(JSON.stringify(config)))}`;
@@ -151,7 +151,7 @@ export const HARNESSES: Harness[] = [
   {
     id: 'opencode',
     label: 'OpenCode',
-    hint: 'Merge into opencode.json.',
+    hint: 'Add it to opencode.json.',
     build: ({ slug, install }) => ({
       type: 'copy',
       text: json({
@@ -167,7 +167,7 @@ export const HARNESSES: Harness[] = [
   {
     id: 'json',
     label: 'JSON config',
-    hint: 'Standard mcpServers entry for any other client.',
+    hint: "Add it to your client's MCP config.",
     build: ({ slug, install }) => ({
       type: 'copy',
       text: json({
@@ -180,12 +180,15 @@ export const HARNESSES: Harness[] = [
   {
     id: 'url',
     label: 'Server URL',
-    hint: 'Paste into any client that takes a URL, like ChatGPT.',
+    hint: 'Paste it into any client that takes a URL.',
     build: ({ install }) => (install.kind === 'remote' ? { type: 'copy', text: install.url } : undefined),
   },
 ];
 
 export const DEFAULT_HARNESS = 'claude-code';
+
+/** Shown first in menus; the rest sit under "More apps". */
+export const FEATURED = ['claude-code', 'cursor', 'vscode', 'claude', 'codex', 'gemini'];
 
 export function harnessById(id: string | undefined): Harness {
   return HARNESSES.find((h) => h.id === id) ?? HARNESSES.find((h) => h.id === DEFAULT_HARNESS)!;

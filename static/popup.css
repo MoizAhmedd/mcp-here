@@ -1,13 +1,11 @@
+/* Layout only; the app list and toast styles come from src/ui/styles.ts. */
 :root {
   color-scheme: light dark;
   --bg: #ffffff;
   --fg: #111827;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --surface: #f9fafb;
-  --accent: #111827;
-  --accent-fg: #ffffff;
-  --ok: #16a34a;
+  --mh-muted: #6b7280;
+  --mh-hover: #f3f4f6;
+  --mh-border: #e5e7eb;
   font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
@@ -15,110 +13,31 @@
   :root {
     --bg: #111113;
     --fg: #f3f4f6;
-    --muted: #9ca3af;
-    --border: #2a2a2e;
-    --surface: #1a1a1d;
-    --accent: #f3f4f6;
-    --accent-fg: #111113;
+    --mh-muted: #9ca3af;
+    --mh-hover: #1f1f23;
+    --mh-border: #2a2a2e;
   }
 }
 
 * { box-sizing: border-box; }
+body { margin: 0; width: 340px; background: var(--bg); color: var(--fg); }
 
-body {
-  margin: 0;
-  width: 380px;
-  background: var(--bg);
-  color: var(--fg);
-}
-
-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-}
-
+header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--mh-border); }
 .domain { font-weight: 600; font-size: 14px; }
-.summary { color: var(--muted); }
+.summary { color: var(--mh-muted); }
 
-main { max-height: 520px; overflow-y: auto; }
-
-.server { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+main { max-height: 480px; overflow-y: auto; }
+.server { padding: 12px 10px 10px; border-bottom: 1px solid var(--mh-border); }
 .server:last-child { border-bottom: 0; }
-
-.server-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.server-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 6px; }
 .title { font-weight: 600; font-size: 14px; }
-.source { color: var(--muted); font-size: 11px; white-space: nowrap; }
-.description { margin: 4px 0 10px; color: var(--muted); }
-.description:empty { display: none; }
+.source { color: var(--mh-muted); font-size: 11px; white-space: nowrap; }
+.description { margin: 2px 6px 8px; color: var(--mh-muted); }
 
-.split { display: flex; flex-wrap: wrap; }
+.empty { padding: 20px 16px; color: var(--mh-muted); }
 
-button {
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  border: 0;
-}
+footer { padding: 10px 16px; border-top: 1px solid var(--mh-border); }
+footer button { all: unset; cursor: pointer; color: var(--mh-muted); font-size: 12px; text-decoration: underline; }
 
-.primary, .toggle {
-  background: var(--accent);
-  color: var(--accent-fg);
-  padding: 8px 12px;
-  font-weight: 600;
-}
-.primary { flex: 1; border-radius: 8px 0 0 8px; text-align: left; }
-.toggle {
-  display: grid;
-  place-items: center;
-  border-radius: 0 8px 8px 0;
-  border-left: 1px solid color-mix(in srgb, var(--accent-fg) 25%, transparent);
-  padding: 0 10px;
-}
-.primary:hover, .toggle:hover { opacity: 0.9; }
-.primary:disabled { opacity: 0.45; cursor: not-allowed; }
-.primary.done { background: var(--ok); color: #fff; }
-
-/* In-flow rather than floating: Chrome sizes the popup to its content, so an overlay would be clipped. */
-.menu {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px;
-  flex-basis: 100%;
-  margin-top: 6px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-.menu[hidden] { display: none; }
-.menu button {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: transparent;
-  text-align: left;
-}
-.menu button:hover:not(:disabled), .menu button:focus-visible { background: var(--surface); }
-.menu button:disabled { color: var(--muted); cursor: not-allowed; }
-.menu .kind { color: var(--muted); font-size: 11px; }
-
-.preview {
-  margin: 10px 0 0;
-  padding: 8px 10px;
-  max-height: 120px;
-  overflow: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.hint { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
-
-.empty { padding: 20px 16px; color: var(--muted); }
+.toast-slot { position: fixed; left: 10px; right: 10px; bottom: 10px; }
+.toast-slot .toast { max-width: none; }

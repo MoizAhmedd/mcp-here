@@ -1,10 +1,10 @@
 # MCP Here
 
-**Every site with an MCP server, one click from your agent.**
+**Stumble onto MCP servers while you browse.**
 
-A Chrome extension that lights up when the site you're on has an MCP server, then adds it to Claude Code, Cursor, VS Code and more.
+When a site has an MCP server, a small bar shows up in the corner. One click adds it to your agent.
 
-<img src="docs/popup-light.png" alt="MCP Here popup on railway.com" width="380">
+<img src="docs/corner-bar.png" alt="MCP Here on railway.com" width="420">
 
 ## Install
 
@@ -16,25 +16,25 @@ A Chrome extension that lights up when the site you're on has an MCP server, the
 
 | One-click | Copy a command or config |
 | --- | --- |
-| Cursor, VS Code, Goose, LM Studio | Claude Code, Codex, Gemini CLI, Windsurf, OpenCode, Claude app, any client (JSON or URL) |
+| Cursor, VS Code, Goose, LM Studio | Claude Code, Claude, Codex, Gemini CLI, Windsurf, OpenCode, any client (JSON or URL) |
 
-Your last pick is remembered.
+Your last pick becomes the main button.
 
 ## How it finds servers
 
-- **The site itself:** `/.well-known` server cards and AI Catalogs (Railway, GitHub, Sentry, Supabase)
-- **The official MCP registry:** matched by verified domain (`com.stripe/mcp` → stripe.com), refreshed daily
+- **A weekly store:** the official MCP registry (matched by verified domain) plus a crawl of the top 10,000 sites' `/.well-known` files, published to GitHub Pages
+- **A live check:** each site you visit is checked once a week, so new or removed servers show up even before the store knows
 
-No servers, accounts or tracking. Sites are only asked about their own `/.well-known` files.
+Nothing leaves your browser. What it remembers about sites you visit is stored hashed.
 
 ## Develop
 
 ```sh
-npm run watch      # rebuild on change
-npm test           # unit tests
+npm run watch                 # rebuild on change
+npm test                      # unit tests
 npm run typecheck
-npm run index      # rebuild data/registry-index.json from the registry
-npm run zip        # package for the Chrome Web Store
+npm run index -- --top=500    # rebuild data/index.json with a smaller crawl
+npm run zip                   # package for the Chrome Web Store
 ```
 
 MIT

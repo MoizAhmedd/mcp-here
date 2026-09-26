@@ -10,14 +10,15 @@ rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist);
 cpSync(`${root}static`, dist, { recursive: true });
 cpSync(`${root}manifest.json`, `${dist}/manifest.json`);
-cpSync(`${root}data/registry-index.json`, `${dist}/registry-index.json`);
+cpSync(`${root}data/index.json`, `${dist}/index.json`);
 
 const context = await esbuild.context({
-  entryPoints: [`${root}src/background.ts`, `${root}src/popup.ts`],
+  entryPoints: [`${root}src/background.ts`, `${root}src/popup.ts`, `${root}src/content.ts`],
   outdir: dist,
   bundle: true,
   format: 'esm',
   target: 'chrome120',
+  minify: !watch,
   logLevel: 'info',
 });
 

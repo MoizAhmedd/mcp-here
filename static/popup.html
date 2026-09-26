@@ -15,24 +15,8 @@
       </div>
     </header>
     <main id="servers"></main>
-    <template id="server-template">
-      <section class="server">
-        <div class="server-head">
-          <span class="title"></span>
-          <span class="source"></span>
-        </div>
-        <p class="description"></p>
-        <div class="split">
-          <button class="primary" type="button"></button>
-          <button class="toggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Choose app">
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="menu" role="menu" hidden></div>
-        </div>
-        <pre class="preview"></pre>
-        <p class="hint"></p>
-      </section>
-    </template>
+    <footer id="footer" hidden></footer>
+    <div id="toast" class="toast-slot"></div>
     <script type="module" src="popup.js"></script>
   </body>
 </html>

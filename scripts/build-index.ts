@@ -1,25 +1,92 @@
-// Downloads the official MCP registry and writes data/registry-index.json.
-// Run with `npm run index`. A GitHub Action runs it daily and publishes the result
-// as a release asset, which installed extensions fetch.
+// Builds data/index.json: the official MCP registry plus a crawl of popular sites'
+// /.well-known files, grouped by domain. A GitHub Action runs it weekly and
+// publishes the result to GitHub Pages, where installed extensions fetch it.
+//
+//   npm run index                      registry + crawl of the top 10,000 sites
+//   npm run index -- --top=500         smaller crawl, for trying it locally
+//   npm run index -- --no-crawl        registry only
 import { writeFileSync } from 'node:fs';
-import { buildIndex, type RegistryEntry } from '../src/lib/registry.ts';
+import { discoverSite, type Fetcher } from '../src/lib/discovery.ts';
+import { buildIndex, mergeSiteServers, type RegistryEntry } from '../src/lib/registry.ts';
+import type { McpServer } from '../src/lib/types.ts';
 
-const API = 'https://registry.modelcontextprotocol.io/v0/servers';
-const OUT = new URL('../data/registry-index.json', import.meta.url);
+const REGISTRY = 'https://registry.modelcontextprotocol.io/v0/servers';
+const TRANCO = 'https://tranco-list.eu/api/lists/date/latest';
+const OUT = new URL('../data/index.json', import.meta.url);
+const USER_AGENT = 'MCPHereBot/1.0 (+https://github.com/MoizAhmedd/mcp-here)';
+const CONCURRENCY = 48;
 
-const entries: RegistryEntry[] = [];
-let cursor: string | undefined;
-do {
-  const params = new URLSearchParams({ limit: '100', version: 'latest' });
-  if (cursor) params.set('cursor', cursor);
-  const res = await fetch(`${API}?${params}`);
-  if (!res.ok) throw new Error(`Registry returned ${res.status} for ${params}`);
-  const page = (await res.json()) as { servers: RegistryEntry[]; metadata?: { nextCursor?: string } };
-  entries.push(...page.servers);
-  cursor = page.metadata?.nextCursor;
-} while (cursor);
+const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}`));
+const top = Number(arg('top')?.split('=')[1] ?? 10_000);
+const crawl = !arg('no-crawl');
 
-const index = buildIndex(entries, new Date().toISOString());
+async function fetchWithRetry(url: string, attempts = 4): Promise<Response> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { 'user-agent': USER_AGENT }, signal: AbortSignal.timeout(30_000) });
+      if (res.ok) return res;
+      if (attempt >= attempts || res.status < 500) throw new Error(`${res.status} from ${url}`);
+    } catch (error) {
+      if (attempt >= attempts) throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000));
+  }
+}
+
+async function registryEntries(): Promise<RegistryEntry[]> {
+  const entries: RegistryEntry[] = [];
+  let cursor: string | undefined;
+  do {
+    const params = new URLSearchParams({ limit: '100', version: 'latest' });
+    if (cursor) params.set('cursor', cursor);
+    const page = (await (await fetchWithRetry(`${REGISTRY}?${params}`)).json()) as {
+      servers: RegistryEntry[];
+      metadata?: { nextCursor?: string };
+    };
+    entries.push(...page.servers);
+    cursor = page.metadata?.nextCursor;
+  } while (cursor);
+  return entries;
+}
+
+async function topSites(count: number): Promise<string[]> {
+  const { list_id } = (await (await fetchWithRetry(TRANCO)).json()) as { list_id: string };
+  const csv = await (await fetchWithRetry(`https://tranco-list.eu/download/${list_id}/${count}`)).text();
+  return csv
+    .split('\n')
+    .map((line) => line.split(',')[1]?.trim())
+    .filter((domain): domain is string => !!domain);
+}
+
+async function crawlSites(domains: string[]): Promise<Record<string, McpServer[]>> {
+  const fetcher: Fetcher = (url, init) => fetch(url, { ...init, headers: { ...init.headers, 'user-agent': USER_AGENT } });
+  const found: Record<string, McpServer[]> = {};
+  let next = 0;
+  let done = 0;
+  const worker = async () => {
+    while (next < domains.length) {
+      const domain = domains[next++]!;
+      const servers = await discoverSite(domain, fetcher);
+      if (servers.length) found[domain] = servers;
+      if (++done % 1000 === 0) console.log(`  crawled ${done}/${domains.length}, ${Object.keys(found).length} with servers`);
+    }
+  };
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  return found;
+}
+
+const entries = await registryEntries();
+let index = buildIndex(entries, new Date().toISOString());
+console.log(`registry: ${entries.length} entries on ${Object.keys(index.domains).length} domains`);
+
+if (crawl) {
+  const domains = [...new Set([...(await topSites(top)), ...Object.keys(index.domains)])];
+  console.log(`crawling ${domains.length} sites`);
+  const found = await crawlSites(domains);
+  console.log(`crawl: ${Object.keys(found).length} sites publish their own server: ${Object.keys(found).slice(0, 20).join(', ')}`);
+  index = mergeSiteServers(index, found);
+}
+
 writeFileSync(OUT, JSON.stringify(index));
 const servers = Object.values(index.domains).reduce((n, list) => n + list.length, 0);
-console.log(`${entries.length} registry entries → ${servers} servers on ${Object.keys(index.domains).length} domains`);
+console.log(`wrote ${servers} servers on ${Object.keys(index.domains).length} domains`);

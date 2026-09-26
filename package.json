@@ -1,6 +1,6 @@
 {
   "name": "mcp-here",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Chrome extension that shows when a site has an MCP server and adds it to your agent in one click.",
   "scripts": {
     "build": "node scripts/build.ts",
