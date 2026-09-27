@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MCP Here: stumble onto MCP servers</title>
+    <meta name="description" content="A Chrome extension that shows when the site you're on has an MCP server, and adds it to your agent in one click." />
+    <meta property="og:title" content="MCP Here" />
+    <meta property="og:description" content="Stumble onto MCP servers while you browse. One click adds them to your agent." />
+    <meta property="og:image" content="https://moizahmedd.github.io/mcp-here/img/og.png" />
+    <meta property="og:url" content="https://moizahmedd.github.io/mcp-here/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="img/icon-128.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <a class="brand" href="./"><img src="img/icon-128.png" alt="" />MCP Here</a>
+        <div class="links">
+          <a class="hide-sm" href="#apps">Apps</a>
+          <a class="hide-sm" href="privacy.html">Privacy</a>
+          <a href="https://github.com/MoizAhmedd/mcp-here">GitHub</a>
+        </div>
+      </nav>
+
+      <header class="hero">
+        <h1>Stumble onto MCP servers.</h1>
+        <p>When a site has an MCP server, MCP Here shows it. One click adds it to your agent.</p>
+        <a class="cta" href="{{STORE_URL}}"><img src="img/chrome.svg" alt="" />Add to Chrome, it's free</a>
+        <div class="frame">
+          <div class="chrome"><span></span><span></span><span></span></div>
+          <video class="wide" src="img/demo.mp4" poster="img/demo-poster.jpg" autoplay muted loop playsinline></video>
+          <video class="narrow" src="img/demo-zoom.mp4" poster="img/demo-zoom-poster.jpg" autoplay muted loop playsinline></video>
+        </div>
+      </header>
+    </div>
+
+    <section id="apps">
+      <div class="wrap">
+        <h2>Works with your agent</h2>
+        <p class="lead">One click where the app allows it. A ready-to-paste command everywhere else.</p>
+        <div class="apps">{{APPS}}</div>
+      </div>
+    </section>
+
+    <section class="soft">
+      <div class="wrap split">
+        <div>
+          <h2>Official first</h2>
+          <p class="lead">Every server says who made it.</p>
+          <ul>
+            <li><span class="pill official">Official</span> published by the site</li>
+            <li><span class="pill setup">Official · needs setup</span> with the setup guide</li>
+            <li><span class="pill unofficial">Unofficial</span> third-party, clearly marked</li>
+          </ul>
+        </div>
+        <div class="shot"><img src="img/posthog-menu-crop.png" alt="MCP Here menu on posthog.com" /></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>Private by default</h2>
+        <div class="private"><span>Nothing leaves your browser</span><span>No account</span><span>Open source</span></div>
+      </div>
+    </section>
+
+    <section class="final soft">
+      <div class="wrap">
+        <h2>If an agent can do it, let it.</h2>
+        <p class="lead">Find the MCP server without going looking.</p>
+        <a class="cta" href="{{STORE_URL}}"><img src="img/chrome.svg" alt="" />Add to Chrome, it's free</a>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap">
+        <span>MCP Here · MIT</span>
+        <span><a href="privacy.html">Privacy</a><a href="https://github.com/MoizAhmedd/mcp-here">GitHub</a></span>
+      </div>
+    </footer>
+  </body>
+</html>
