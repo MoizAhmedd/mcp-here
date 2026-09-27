@@ -5,14 +5,24 @@
 //   npm run index                      registry + crawl of the top 10,000 sites
 //   npm run index -- --top=500         smaller crawl, for trying it locally
 //   npm run index -- --no-crawl        registry only
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { discoverSite, type Fetcher } from '../src/lib/discovery.ts';
-import { buildIndex, mergeSiteServers, type RegistryEntry } from '../src/lib/registry.ts';
+import {
+  brandsFromDomains,
+  buildIndex,
+  curatedServers,
+  mergeSiteServers,
+  type CuratedEntry,
+  type RegistryEntry,
+} from '../src/lib/registry.ts';
 import type { McpServer } from '../src/lib/types.ts';
 
 const REGISTRY = 'https://registry.modelcontextprotocol.io/v0/servers';
 const TRANCO = 'https://tranco-list.eu/api/lists/date/latest';
 const OUT = new URL('../data/index.json', import.meta.url);
+const CURATED = new URL('../data/curated.json', import.meta.url);
+/** Popular sites used to match third-party servers by brand name, independent of how many we crawl. */
+const BRAND_SITES = 10_000;
 const USER_AGENT = 'MCPHereBot/1.0 (+https://github.com/MoizAhmedd/mcp-here)';
 const CONCURRENCY = 48;
 
@@ -75,12 +85,17 @@ async function crawlSites(domains: string[]): Promise<Record<string, McpServer[]
   return found;
 }
 
-const entries = await registryEntries();
-let index = buildIndex(entries, new Date().toISOString());
-console.log(`registry: ${entries.length} entries on ${Object.keys(index.domains).length} domains`);
+const curated = (JSON.parse(readFileSync(CURATED, 'utf8')) as { entries: CuratedEntry[] }).entries;
+const [entries, popular] = await Promise.all([registryEntries(), topSites(Math.max(top, BRAND_SITES))]);
+const brands = brandsFromDomains(popular);
+// Hand-listed keywords win over brands derived from domain names.
+for (const entry of curated) for (const keyword of entry.keywords) brands.set(keyword, entry.keys[0]!);
+let index = mergeSiteServers(buildIndex(entries, new Date().toISOString(), { brands }), curatedServers(curated));
+console.log(`registry: ${entries.length} entries on ${Object.keys(index.domains).length} keys`);
 
 if (crawl) {
-  const domains = [...new Set([...(await topSites(top)), ...Object.keys(index.domains)])];
+  const registrable = Object.keys(index.domains).filter((key) => !key.includes('/'));
+  const domains = [...new Set([...popular.slice(0, top), ...registrable])];
   console.log(`crawling ${domains.length} sites`);
   const found = await crawlSites(domains);
   console.log(`crawl: ${Object.keys(found).length} sites publish their own server: ${Object.keys(found).slice(0, 20).join(', ')}`);

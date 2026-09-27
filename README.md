@@ -22,8 +22,10 @@ Your last pick becomes the main button.
 
 ## How it finds servers
 
-- **A weekly store:** the official MCP registry (matched by verified domain) plus a crawl of the top 10,000 sites' `/.well-known` files, published to GitHub Pages
-- **A live check:** each site you visit is checked once a week, so new or removed servers show up even before the store knows
+- **The site itself:** `/.well-known` server cards, checked weekly for the top 10,000 sites and live on each visit (at most once a week)
+- **The official MCP registry:** servers verified as the site's own
+- **A hand-maintained list:** big sites that publish nowhere, like Google Workspace (`data/curated.json`)
+- **Unofficial servers:** third-party servers named after the site, marked with an amber dot
 
 Nothing leaves your browser. What it remembers about sites you visit is stored hashed.
 

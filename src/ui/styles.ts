@@ -19,6 +19,14 @@ export const APPS_CSS = `
 .app.more > svg { width: 14px; height: 14px; margin: 0 2px; }
 .divider { height: 1px; background: var(--mh-border); margin: 4px 6px; }
 
+.tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.tag.official { background: #dcfce7; color: #166534; }
+.tag.setup { background: #dbeafe; color: #1e40af; }
+.tag.unofficial { background: #fef3c7; color: #92400e; }
+.note { margin: 2px 6px 6px; padding: 8px 10px; border-radius: 9px; font-size: 12px; line-height: 1.4; background: #fffbeb; color: #92400e; }
+.note.setup { background: #eff6ff; color: #1e40af; }
+.note button { all: unset; cursor: pointer; text-decoration: underline; }
+
 .toast {
   display: flex; align-items: center; gap: 10px; box-sizing: border-box;
   background: #111827; color: #fff; border-radius: 14px; padding: 10px 12px; font-size: 13px;
@@ -68,9 +76,16 @@ button { font: inherit; }
   box-shadow: 0 16px 40px rgb(0 0 0 / 0.22), 0 0 0 1px rgb(0 0 0 / 0.06);
 }
 .menu-head { padding: 8px 10px 6px; color: #6b7280; font-size: 12px; }
-.servers { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 6px 6px; }
-.servers button { all: unset; cursor: pointer; font-size: 12px; padding: 3px 8px; border-radius: 999px; background: #f3f4f6; color: #374151; }
-.servers button[aria-pressed='true'] { background: #111827; color: #fff; }
+.section { padding: 8px 10px 4px; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.pick {
+  all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 10px; border-radius: 9px; font-size: 13px;
+}
+.pick:hover, .pick:focus-visible, .pick[aria-pressed='true'] { background: #f3f4f6; }
+.pick-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-by { color: #6b7280; font-weight: 400; }
+.dot.amber { background: #f59e0b; box-shadow: 0 0 0 3px rgb(245 158 11 / 0.2); }
+.split .main > svg { width: 16px; height: 16px; }
 .tab {
   all: unset; cursor: pointer; position: relative; display: grid; place-items: center;
   width: 40px; height: 40px; border-radius: 12px; background: #111827; color: #fff;

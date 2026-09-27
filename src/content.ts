@@ -1,8 +1,9 @@
 // The corner bar. Runs on every https page but only builds UI when the site has a server.
 import { harnessById, type Harness } from './lib/harnesses.ts';
+import { displayName, onlyUnofficial, publisherOf, summary } from './lib/labels.ts';
 import type { Request, SiteInfo, UpdateMessage } from './lib/messages.ts';
 import type { NamedServer } from './lib/types.ts';
-import { actionLabel, appIcon, copyText, primaryApp, renderAppList, renderToast } from './ui/apps.ts';
+import { actionLabel, appIcon, copyText, primaryApp, renderAppList, renderToast, trustTag } from './ui/apps.ts';
 import { GLYPHS } from './ui/icons.ts';
 import { BAR_CSS } from './ui/styles.ts';
 
@@ -57,6 +58,16 @@ async function run(harness: Harness): Promise<void> {
   collapseTimer = setTimeout(() => show('tab'), TOAST_MS);
 }
 
+function openSetup(): void {
+  if (server.setupUrl) send({ type: 'open', url: server.setupUrl });
+}
+
+function dot(): HTMLElement {
+  const node = document.createElement('span');
+  node.className = onlyUnofficial(info.servers) ? 'dot amber' : 'dot';
+  return node;
+}
+
 async function pick(harness: Harness): Promise<void> {
   preferred = harness;
   await chrome.storage.sync.set({ harness: harness.id });
@@ -69,20 +80,26 @@ function renderBar(): HTMLElement {
 
   const lead = document.createElement('span');
   lead.className = 'lead';
-  const dot = document.createElement('span');
-  dot.className = 'dot';
   const label = document.createElement('span');
   const name = document.createElement('b');
-  const many = info.servers.length > 1;
-  name.textContent = many ? info.domain! : server.title;
-  label.append(name, many ? ` has ${info.servers.length} MCP servers` : ' has an MCP server');
-  lead.append(dot, label);
+  const { name: who, rest } = summary(info.servers, info.domain!);
+  name.textContent = who;
+  label.append(name, rest);
+  lead.append(dot(), label);
 
-  const app = primaryApp(server, preferred);
   const split = document.createElement('div');
   split.className = 'split';
-  const main = button('main', '', actionLabel(app), () => run(app));
-  main.append(appIcon(app), actionLabel(app));
+  let main: HTMLButtonElement;
+  if (server.setupUrl) {
+    // The URL alone won't work until the provider's setup is done, so lead with the guide.
+    const setupLabel = `Set up ${displayName(server)} MCP`;
+    main = button('main', GLYPHS.open, setupLabel, openSetup);
+    main.append(setupLabel);
+  } else {
+    const app = primaryApp(server, preferred);
+    main = button('main', '', actionLabel(app), () => run(app));
+    main.append(appIcon(app), actionLabel(app));
+  }
   const caret = button('caret', GLYPHS.caret, 'Choose app', () => show(view === 'menu' ? 'bar' : 'menu'));
   caret.setAttribute('aria-expanded', String(view === 'menu'));
   split.append(main, caret);
@@ -95,26 +112,49 @@ function renderBar(): HTMLElement {
   return bar;
 }
 
+function div(className: string, value = ''): HTMLDivElement {
+  const node = document.createElement('div');
+  node.className = className;
+  node.textContent = value;
+  return node;
+}
+
+function renderServerList(): HTMLElement[] {
+  const rows = info.servers.map((option) => {
+    const row = button('pick', '', displayName(option), () => {
+      server = option;
+      show('menu');
+    });
+    row.setAttribute('aria-pressed', String(option === server));
+    const name = document.createElement('span');
+    name.className = 'pick-name';
+    const by = document.createElement('span');
+    by.className = 'pick-by';
+    by.textContent = ` by ${publisherOf(option, info.domain!)}`;
+    name.append(displayName(option), by);
+    row.append(name, trustTag(option));
+    return row;
+  });
+  return [div('section', 'Servers'), ...rows, div('divider')];
+}
+
 function renderMenu(): HTMLElement {
-  const menu = document.createElement('div');
-  menu.className = 'menu';
-  const head = document.createElement('div');
-  head.className = 'menu-head';
-  head.textContent = `Add ${server.title} MCP to…`;
-  menu.append(head);
-  if (info.servers.length > 1) {
-    const chooser = document.createElement('div');
-    chooser.className = 'servers';
-    for (const option of info.servers) {
-      const chip = button('', '', option.title, () => {
-        server = option;
-        show('menu');
-      });
-      chip.textContent = option.title;
-      chip.setAttribute('aria-pressed', String(option === server));
-      chooser.append(chip);
-    }
-    menu.append(chooser);
+  const menu = div('menu');
+  if (info.servers.length > 1) menu.append(...renderServerList());
+  const publisher = publisherOf(server, info.domain!);
+  if (server.setupUrl) {
+    const note = div('note setup', `${server.setupNote ?? 'Needs setup before it works.'} `);
+    const guide = button('', '', 'Setup guide', openSetup);
+    guide.textContent = 'Setup guide ↗';
+    note.append(guide);
+    menu.append(note, div('menu-head', 'Then add it to…'));
+  } else if (server.unofficial) {
+    menu.append(
+      div('note', `Not made by ${info.domain}. Check the publisher before connecting your account.`),
+      div('menu-head', `Add ${displayName(server)} (${publisher}) to…`),
+    );
+  } else {
+    menu.append(div('menu-head', `Add ${displayName(server)} MCP to…`));
   }
   menu.append(renderAppList({ server, selected: primaryApp(server, preferred), onPick: pick }));
   return menu;
@@ -124,13 +164,12 @@ function show(next: View): void {
   view = next;
   wrap.replaceChildren();
   if (view === 'tab') {
-    const tab = button('tab', GLYPHS.plug, `${info.domain} has an MCP server`, () => {
+    const { name, rest } = summary(info.servers, info.domain!);
+    const tab = button('tab', GLYPHS.plug, name + rest, () => {
       show('bar');
       scheduleCollapse();
     });
-    const dot = document.createElement('span');
-    dot.className = 'dot';
-    tab.append(dot);
+    tab.append(dot());
     wrap.append(tab);
   } else if (view === 'toast' && toast) {
     wrap.append(toast);

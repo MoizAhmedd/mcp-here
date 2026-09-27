@@ -16,11 +16,23 @@ export function needsCheck(check: SiteCheck | undefined, now: number): boolean {
 /**
  * Combine the shared store with this browser's own check. The check is newer
  * than the store's weekly crawl, so it replaces what the store says the site
- * publishes; registry entries always stay.
+ * publishes; registry and hand-listed entries always stay.
  */
 export function combine(stored: McpServer[], check: SiteCheck | undefined): McpServer[] {
-  if (!check) return stored;
-  return [...check.servers, ...stored.filter((server) => server.source === 'registry')];
+  const servers = check ? [...check.servers, ...stored.filter((server) => server.source !== 'site')] : stored;
+  // Official servers first, whichever index key they came from.
+  return [...servers.filter((s) => !s.unofficial), ...servers.filter((s) => s.unofficial)];
+}
+
+/**
+ * Merge the store's entries for a page, given most specific key first
+ * (mail.google.com before google.com). Official servers come from every level;
+ * unofficial ones only from the most specific level that has any servers, so
+ * Gmail doesn't inherit google.com's loose matches.
+ */
+export function mergeLevels(levels: McpServer[][]): McpServer[] {
+  const nearest = levels.find((servers) => servers.length) ?? [];
+  return [...levels.flatMap((servers) => servers.filter((s) => !s.unofficial)), ...nearest.filter((s) => s.unofficial)];
 }
 
 /** Whether the corner bar has been seen or dismissed on a site. */
@@ -31,10 +43,13 @@ export interface BarState {
 
 export type BarMode = 'open' | 'collapsed' | 'hidden';
 
-/** Open on the first visit to a site, a collapsed tab after that, gone once dismissed. */
-export function barMode(state: BarState | undefined): BarMode {
+/**
+ * Open on the first visit to a site, a collapsed tab after that, gone once dismissed.
+ * Sites with only unofficial servers never open on their own.
+ */
+export function barMode(state: BarState | undefined, unofficialOnly = false): BarMode {
   if (state?.dismissed) return 'hidden';
-  return state?.seen ? 'collapsed' : 'open';
+  return state?.seen || unofficialOnly ? 'collapsed' : 'open';
 }
 
 /**

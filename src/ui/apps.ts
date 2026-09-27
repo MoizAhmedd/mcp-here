@@ -1,5 +1,6 @@
 import { FEATURED, HARNESSES, type Action, type Harness } from '../lib/harnesses.ts';
-import type { NamedServer } from '../lib/types.ts';
+import { TRUST_LABELS, trustOf } from '../lib/labels.ts';
+import type { McpServer, NamedServer } from '../lib/types.ts';
 import { APP_ICONS, GLYPHS } from './icons.ts';
 
 /** Build an element from trusted markup (our own icons). Never pass site data here. */
@@ -15,6 +16,11 @@ function text(tag: string, className: string, value: string): HTMLElement {
   node.className = className;
   node.textContent = value;
   return node;
+}
+
+export function trustTag(server: McpServer): HTMLElement {
+  const trust = trustOf(server);
+  return text('span', `tag ${trust}`, TRUST_LABELS[trust]);
 }
 
 export function appIcon(harness: Harness): HTMLElement {

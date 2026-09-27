@@ -1,9 +1,10 @@
 import { discoverSite } from './lib/discovery.ts';
-import { lookupDomains, siteDomain } from './lib/domain.ts';
+import { siteDomain } from './lib/domain.ts';
+import { onlyUnofficial } from './lib/labels.ts';
 import type { Request, SiteInfo, UpdateMessage } from './lib/messages.ts';
-import { isRegistryIndex, type RegistryIndex } from './lib/registry.ts';
+import { isRegistryIndex, pageKeys, type RegistryIndex } from './lib/registry.ts';
 import { installKey, nameServers } from './lib/servers.ts';
-import { barMode, combine, needsCheck, RECHECK_MS, siteKey, type BarState, type SiteCheck } from './lib/store.ts';
+import { barMode, combine, mergeLevels, needsCheck, RECHECK_MS, siteKey, type BarState, type SiteCheck } from './lib/store.ts';
 import type { McpServer } from './lib/types.ts';
 
 // Rebuilt weekly by a GitHub Action (registry + crawl of popular sites) and served from GitHub Pages.
@@ -14,7 +15,7 @@ const INDEX_META = 'index:meta';
 
 // Storage layout (chrome.storage.local):
 //   index:meta        { generatedAt, domains } for the installed store
-//   s:<domain>        the store's servers for a domain (public data, so plain keys)
+//   s:<key>           the store's servers for a domain, host or host/path (public data, so plain keys)
 //   c:<hash>          this browser's own check of a site (SiteCheck)
 //   b:<hash>          corner bar state for a site (BarState)
 
@@ -53,10 +54,10 @@ async function pruneChecks(): Promise<void> {
   if (expired.length) await chrome.storage.local.remove(expired.map(([key]) => key));
 }
 
-async function storedServers(domain: string): Promise<McpServer[]> {
-  const keys = lookupDomains(domain).map((d) => `s:${d}`);
-  const found = (await chrome.storage.local.get(keys)) as Record<string, McpServer[]>;
-  return keys.flatMap((key) => found[key] ?? []);
+async function storedServers(keys: string[]): Promise<McpServer[]> {
+  const storageKeys = keys.map((key) => `s:${key}`);
+  const found = (await chrome.storage.local.get(storageKeys)) as Record<string, McpServer[]>;
+  return mergeLevels(storageKeys.map((key) => found[key] ?? []));
 }
 
 async function getSiteData(domain: string): Promise<{ check?: SiteCheck; bar?: BarState }> {
@@ -87,7 +88,7 @@ const sameServers = (a: McpServer[], b: McpServer[]) =>
 
 async function setBadge(tabId: number, info: SiteInfo): Promise<void> {
   const count = info.servers.length;
-  await chrome.action.setBadgeBackgroundColor({ tabId, color: '#16a34a' });
+  await chrome.action.setBadgeBackgroundColor({ tabId, color: onlyUnofficial(info.servers) ? '#d97706' : '#16a34a' });
   await chrome.action.setBadgeText({ tabId, text: count ? String(count) : '' });
   await chrome.action.setTitle({
     tabId,
@@ -101,14 +102,14 @@ async function setBadge(tabId: number, info: SiteInfo): Promise<void> {
  * that; the page gets an answer now and an update if the check changes it.
  */
 async function lookup(url: string | undefined, tabId: number | undefined, wait: boolean): Promise<SiteInfo> {
-  const domain = url?.startsWith('https://') ? siteDomain(new URL(url).hostname) : null;
-  if (!domain) return { domain: null, servers: [], bar: 'hidden' };
-  const [stored, { check, bar }] = await Promise.all([storedServers(domain), getSiteData(domain)]);
-  const info = (latest: SiteCheck | undefined): SiteInfo => ({
-    domain,
-    servers: nameServers(combine(stored, latest), domain),
-    bar: barMode(bar),
-  });
+  const page = url?.startsWith('https://') ? new URL(url) : undefined;
+  const domain = page ? siteDomain(page.hostname) : null;
+  if (!page || !domain) return { domain: null, servers: [], bar: 'hidden' };
+  const [stored, { check, bar }] = await Promise.all([storedServers(pageKeys(page, domain)), getSiteData(domain)]);
+  const info = (latest: SiteCheck | undefined): SiteInfo => {
+    const servers = nameServers(combine(stored, latest), domain);
+    return { domain, servers, bar: barMode(bar, onlyUnofficial(servers)) };
+  };
 
   if (needsCheck(check, Date.now())) {
     const pending = checkSite(domain);

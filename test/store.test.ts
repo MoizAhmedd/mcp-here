@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mergeSiteServers } from '../src/lib/registry.ts';
-import { barMode, combine, needsCheck, RECHECK_MS, siteKey } from '../src/lib/store.ts';
+import { barMode, combine, mergeLevels, needsCheck, RECHECK_MS, siteKey } from '../src/lib/store.ts';
 import type { McpServer, Source } from '../src/lib/types.ts';
 
 const server = (id: string, source: Source): McpServer => ({
@@ -32,6 +32,8 @@ test('the corner bar opens on the first visit, then collapses, and stays gone on
   assert.equal(barMode({ seen: true }), 'collapsed');
   assert.equal(barMode({ seen: true, dismissed: true }), 'hidden');
   assert.equal(barMode({ seen: true, dismissed: false }), 'collapsed');
+  assert.equal(barMode(undefined, true), 'collapsed');
+  assert.equal(barMode({ dismissed: true }, true), 'hidden');
 });
 
 test('per-site storage keys are hashed and stable', async () => {
@@ -48,4 +50,17 @@ test('crawled servers go ahead of registry entries in the index', () => {
   assert.deepEqual(merged.domains['railway.com']!.map((s) => s.id), ['card', 'registry']);
   assert.deepEqual(merged.domains['new.dev']!.map((s) => s.id), ['new']);
   assert.deepEqual(index.domains['railway.com']!.map((s) => s.id), ['registry']);
+});
+
+test('official servers come before unofficial ones', () => {
+  const unofficial = { ...server('fan', 'registry'), unofficial: true as const };
+  assert.deepEqual(combine([unofficial, server('official', 'registry')], undefined).map((s) => s.id), ['official', 'fan']);
+});
+
+test("a page with its own entry doesn't inherit the whole domain's unofficial matches", () => {
+  const fan = (id: string) => ({ ...server(id, 'registry'), unofficial: true as const });
+  const gmail = [server('gmail', 'curated'), fan('gmail-fan')];
+  const google = [server('google-official', 'registry'), fan('patent-search')];
+  assert.deepEqual(mergeLevels([gmail, google]).map((s) => s.id), ['gmail', 'google-official', 'gmail-fan']);
+  assert.deepEqual(mergeLevels([[], google]).map((s) => s.id), ['google-official', 'patent-search']);
 });

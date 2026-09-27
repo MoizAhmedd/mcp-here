@@ -1,8 +1,9 @@
 // Toolbar popup: the same app list as the corner bar, for when you'd rather click the icon.
 import { harnessById, type Harness } from './lib/harnesses.ts';
+import { publisherOf } from './lib/labels.ts';
 import type { Request, SiteInfo } from './lib/messages.ts';
 import type { NamedServer } from './lib/types.ts';
-import { copyText, primaryApp, renderAppList, renderToast } from './ui/apps.ts';
+import { copyText, primaryApp, renderAppList, renderToast, trustTag } from './ui/apps.ts';
 import { APPS_CSS } from './ui/styles.ts';
 
 const $ = (selector: string) => document.querySelector<HTMLElement>(selector)!;
@@ -33,16 +34,32 @@ function renderServer(server: NamedServer, domain: string): HTMLElement {
   const title = document.createElement('span');
   title.className = 'title';
   title.textContent = server.title;
-  const source = document.createElement('span');
-  source.className = 'source';
-  source.textContent = server.source === 'site' ? `Published by ${domain}` : 'MCP Registry';
-  head.append(title, source);
-  section.append(head);
+  head.append(title, trustTag(server));
+  const by = document.createElement('p');
+  by.className = 'source';
+  by.textContent = `by ${publisherOf(server, domain)}`;
+  section.append(head, by);
   if (server.description) {
     const description = document.createElement('p');
     description.className = 'description';
     description.textContent = server.description;
     section.append(description);
+  }
+  if (server.setupUrl) {
+    const note = document.createElement('div');
+    note.className = 'note setup';
+    note.textContent = `${server.setupNote ?? 'Needs setup before it works.'} `;
+    const guide = document.createElement('button');
+    guide.type = 'button';
+    guide.textContent = 'Setup guide ↗';
+    guide.addEventListener('click', () => send({ type: 'open', url: server.setupUrl!, tabId }));
+    note.append(guide);
+    section.append(note);
+  } else if (server.unofficial) {
+    const note = document.createElement('div');
+    note.className = 'note';
+    note.textContent = `Not made by ${domain}. Check the publisher before connecting your account.`;
+    section.append(note);
   }
   section.append(renderAppList({ server, selected: primaryApp(server, preferred), onPick: (h) => pick(server, h) }));
   return section;
