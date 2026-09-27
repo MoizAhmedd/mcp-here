@@ -1,133 +1,114 @@
-import type { LookupRequest, LookupResponse } from './background.ts';
-import { HARNESSES, harnessById, type Action, type Harness } from './lib/harnesses.ts';
+// Toolbar popup: the same app list as the corner bar, for when you'd rather click the icon.
+import { harnessById, type Harness } from './lib/harnesses.ts';
+import { publisherOf } from './lib/labels.ts';
+import type { Request, SiteInfo } from './lib/messages.ts';
 import type { NamedServer } from './lib/types.ts';
+import { copyText, primaryApp, renderAppList, renderToast, trustTag } from './ui/apps.ts';
+import { APPS_CSS } from './ui/styles.ts';
 
-const $ = <T extends Element>(selector: string, root: ParentNode = document) => root.querySelector<T>(selector)!;
+const $ = (selector: string) => document.querySelector<HTMLElement>(selector)!;
+const send = <T>(message: Request) => chrome.runtime.sendMessage(message) as Promise<T>;
 
-let harness: Harness = harnessById(undefined);
-let tabId: number | undefined;
-const redraws: (() => void)[] = [];
+let tabId: number;
+let preferred: Harness;
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
-function primaryLabel(h: Harness, action: Action | undefined): string {
-  if (!action) return `Not available for ${h.label}`;
-  return action.type === 'open' ? `Add to ${h.label}` : `Copy for ${h.label}`;
-}
-
-async function run(action: Action, button: HTMLButtonElement, h: Harness): Promise<void> {
+async function pick(server: NamedServer, harness: Harness): Promise<void> {
+  const action = harness.build(server);
+  if (!action) return;
+  preferred = harness;
+  await chrome.storage.sync.set({ harness: harness.id });
   const clip = action.type === 'copy' ? action.text : action.copy;
-  if (clip) await navigator.clipboard.writeText(clip);
-  if (action.type === 'open') {
-    // Custom schemes (cursor://, vscode:) hand off to the app without leaving the page.
-    if (action.url.startsWith('https://')) await chrome.tabs.create({ url: action.url });
-    else if (tabId !== undefined) await chrome.tabs.update(tabId, { url: action.url });
-  }
-  button.textContent = action.type === 'copy' ? 'Copied' : `Opening ${h.label}…`;
-  button.classList.add('done');
-  setTimeout(() => {
-    button.classList.remove('done');
-    redraws.forEach((redraw) => redraw());
-  }, 1600);
+  if (clip) await copyText(clip);
+  if (action.type === 'open') await send({ type: 'open', url: action.url, tabId });
+  $('#toast').replaceChildren(renderToast(harness, action));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('#toast').replaceChildren(), 4000);
 }
 
 function renderServer(server: NamedServer, domain: string): HTMLElement {
-  const node = ($<HTMLTemplateElement>('#server-template').content.cloneNode(true) as DocumentFragment)
-    .firstElementChild as HTMLElement;
-  $('.title', node).textContent = server.title;
-  $('.source', node).textContent = server.source === 'site' ? `Published by ${domain}` : 'MCP Registry';
-  $('.description', node).textContent = server.description ?? '';
-
-  const primary = $<HTMLButtonElement>('.primary', node);
-  const toggle = $<HTMLButtonElement>('.toggle', node);
-  const menu = $<HTMLDivElement>('.menu', node);
-  const preview = $<HTMLPreElement>('.preview', node);
-  const hint = $<HTMLParagraphElement>('.hint', node);
-
-  const setMenuOpen = (open: boolean) => {
-    menu.hidden = !open;
-    toggle.setAttribute('aria-expanded', String(open));
-    if (open) menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
-  };
-
-  for (const h of HARNESSES) {
-    const action = h.build(server);
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.setAttribute('role', 'menuitem');
-    item.disabled = !action;
-    const label = document.createElement('span');
-    label.textContent = h.label;
-    const kind = document.createElement('span');
-    kind.className = 'kind';
-    kind.textContent = !action ? 'n/a' : action.type === 'copy' ? 'copy' : action.copy ? 'copy + open' : 'one-click';
-    item.append(label, kind);
-    item.addEventListener('click', async () => {
-      setMenuOpen(false);
-      harness = h;
-      await chrome.storage.sync.set({ harness: h.id });
-      redraws.forEach((redraw) => redraw());
-      if (action) await run(action, primary, h);
-    });
-    menu.append(item);
+  const section = document.createElement('section');
+  section.className = 'server';
+  const head = document.createElement('div');
+  head.className = 'server-head';
+  const title = document.createElement('span');
+  title.className = 'title';
+  title.textContent = server.title;
+  head.append(title, trustTag(server));
+  const by = document.createElement('p');
+  by.className = 'source';
+  by.textContent = `by ${publisherOf(server, domain)}`;
+  section.append(head, by);
+  if (server.description) {
+    const description = document.createElement('p');
+    description.className = 'description';
+    description.textContent = server.description;
+    section.append(description);
   }
-
-  const redraw = () => {
-    const action = harness.build(server);
-    primary.textContent = primaryLabel(harness, action);
-    primary.disabled = !action;
-    preview.textContent = !action ? '' : action.type === 'copy' ? action.text : action.preview;
-    preview.hidden = !action;
-    hint.textContent = action ? harness.hint : 'Pick another app from the menu.';
-  };
-  redraws.push(redraw);
-  redraw();
-
-  primary.addEventListener('click', () => {
-    const action = harness.build(server);
-    if (action) run(action, primary, harness);
-  });
-  const isMenuOpen = () => toggle.getAttribute('aria-expanded') === 'true';
-  toggle.addEventListener('click', () => setMenuOpen(!isMenuOpen()));
-  node.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && isMenuOpen()) {
-      setMenuOpen(false);
-      toggle.focus();
-    }
-  });
-  document.addEventListener('click', (event) => {
-    if (!node.querySelector('.split')!.contains(event.target as Node)) setMenuOpen(false);
-  });
-  return node;
+  if (server.setupUrl) {
+    const note = document.createElement('div');
+    note.className = 'note setup';
+    note.textContent = `${server.setupNote ?? 'Needs setup before it works.'} `;
+    const guide = document.createElement('button');
+    guide.type = 'button';
+    guide.textContent = 'Setup guide ↗';
+    guide.addEventListener('click', () => send({ type: 'open', url: server.setupUrl!, tabId }));
+    note.append(guide);
+    section.append(note);
+  } else if (server.unofficial) {
+    const note = document.createElement('div');
+    note.className = 'note';
+    note.textContent = `Not made by ${domain}. Check the publisher before connecting your account.`;
+    section.append(note);
+  }
+  section.append(renderAppList({ server, selected: primaryApp(server, preferred), onPick: (h) => pick(server, h) }));
+  return section;
 }
 
-function renderEmpty(domain: string | null): HTMLElement {
-  const box = document.createElement('div');
-  box.className = 'empty';
-  box.textContent = domain
-    ? "Checked the site's /.well-known files and the official MCP registry."
-    : 'Open a website to check it for an MCP server.';
-  return box;
+function renderFooter(info: SiteInfo): void {
+  if (!info.domain || !info.servers.length || info.bar !== 'hidden') return;
+  const footer = $('#footer');
+  const show = document.createElement('button');
+  show.type = 'button';
+  show.textContent = 'Show the corner button on this site again';
+  show.addEventListener('click', async () => {
+    await send({ type: 'bar', domain: info.domain!, dismissed: false });
+    footer.textContent = 'It will be back next time you load the page.';
+  });
+  footer.append(show);
+  footer.hidden = false;
 }
 
 async function main(): Promise<void> {
+  const style = document.createElement('style');
+  style.textContent = APPS_CSS;
+  document.head.append(style);
+
   const [[tab], stored] = await Promise.all([
     chrome.tabs.query({ active: true, currentWindow: true }),
     chrome.storage.sync.get('harness'),
   ]);
-  tabId = tab?.id;
-  harness = harnessById(stored.harness as string | undefined);
+  tabId = tab!.id!;
+  preferred = harnessById(stored.harness as string | undefined);
+  const info = await send<SiteInfo>({ type: 'lookup', url: tab?.url ?? '', tabId });
 
-  const request: LookupRequest = { type: 'lookup', url: tab?.url ?? '' };
-  const { domain, servers }: LookupResponse = await chrome.runtime.sendMessage(request);
-
-  $('#domain').textContent = domain ?? 'MCP Here';
-  $('#summary').textContent = servers.length
-    ? `${servers.length} MCP server${servers.length === 1 ? '' : 's'}`
-    : domain
+  $('#domain').textContent = info.domain ?? 'MCP Here';
+  $('#summary').textContent = info.servers.length
+    ? `${info.servers.length} MCP server${info.servers.length === 1 ? '' : 's'}`
+    : info.domain
       ? 'No MCP server found'
       : '';
   const list = $('#servers');
-  if (!servers.length) list.append(renderEmpty(domain));
-  for (const server of servers) list.append(renderServer(server, domain!));
+  if (!info.servers.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = info.domain
+      ? "Checked the site's /.well-known files and the official MCP registry."
+      : 'Open a website to check it for an MCP server.';
+    list.append(empty);
+  }
+  for (const server of info.servers) list.append(renderServer(server, info.domain!));
+  renderFooter(info);
 }
 
 main();

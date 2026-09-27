@@ -5,7 +5,8 @@ export type InstallSpec =
   | { kind: 'remote'; transport: Transport; url: string; headers: string[] }
   | { kind: 'stdio'; command: string; args: string[]; env: string[] };
 
-export type Source = 'site' | 'registry';
+/** Where we learned about a server: the site's own files, the MCP registry, or our hand-maintained list. */
+export type Source = 'site' | 'registry' | 'curated';
 
 export interface McpServer {
   /** Registry name (`com.railway/mcp`) or the card URL for site-published servers. */
@@ -15,6 +16,14 @@ export interface McpServer {
   docsUrl?: string;
   source: Source;
   install: InstallSpec;
+  /** A third-party server for this site, not made by the site's owner. */
+  unofficial?: true;
+  /** The server needs account setup first (e.g. a Google Cloud project); link to the guide. */
+  setupUrl?: string;
+  /** What that setup involves, in one line. */
+  setupNote?: string;
+  /** Who publishes it, when the id doesn't say (hand-listed servers). */
+  publisher?: string;
 }
 
 /** A server plus the short name used in install commands (`railway`). */

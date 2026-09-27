@@ -1,0 +1,166 @@
+{
+  "$comment": "Official servers the registry and site crawl can't find. Keys are an index key (domain, host, or host/first-path-segment). Keywords match third-party servers to these pages by name.",
+  "entries": [
+    {
+      "keys": [
+        "mail.google.com"
+      ],
+      "keywords": [
+        "gmail"
+      ],
+      "server": {
+        "id": "google/gmail",
+        "title": "Gmail",
+        "publisher": "Google",
+        "description": "Search threads, read messages, draft email and manage labels.",
+        "docsUrl": "https://developers.google.com/workspace/gmail/api/reference/mcp",
+        "setupUrl": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+        "setupNote": "Google needs a Cloud project and OAuth client first.",
+        "install": {
+          "kind": "remote",
+          "transport": "http",
+          "url": "https://gmailmcp.googleapis.com/mcp/v1",
+          "headers": []
+        }
+      }
+    },
+    {
+      "keys": [
+        "drive.google.com"
+      ],
+      "keywords": [
+        "gdrive",
+        "googledrive"
+      ],
+      "server": {
+        "id": "google/drive",
+        "title": "Google Drive",
+        "publisher": "Google",
+        "description": "Search, read and organize files in Google Drive.",
+        "setupUrl": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+        "setupNote": "Google needs a Cloud project and OAuth client first.",
+        "install": {
+          "kind": "remote",
+          "transport": "http",
+          "url": "https://drivemcp.googleapis.com/mcp/v1",
+          "headers": []
+        }
+      }
+    },
+    {
+      "keys": [
+        "docs.google.com/document"
+      ],
+      "keywords": [
+        "googledocs",
+        "gdocs"
+      ],
+      "server": {
+        "id": "google/docs",
+        "title": "Google Docs",
+        "publisher": "Google",
+        "description": "Read and edit Google Docs.",
+        "setupUrl": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+        "setupNote": "Google needs a Cloud project and OAuth client first.",
+        "install": {
+          "kind": "remote",
+          "transport": "http",
+          "url": "https://docsmcp.googleapis.com/mcp/v1",
+          "headers": []
+        }
+      }
+    },
+    {
+      "keys": [
+        "docs.google.com/spreadsheets"
+      ],
+      "keywords": [
+        "googlesheets",
+        "gsheets"
+      ],
+      "server": {
+        "id": "google/sheets",
+        "title": "Google Sheets",
+        "publisher": "Google",
+        "description": "Read and edit Google Sheets.",
+        "setupUrl": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+        "setupNote": "Google needs a Cloud project and OAuth client first.",
+        "install": {
+          "kind": "remote",
+          "transport": "http",
+          "url": "https://sheetsmcp.googleapis.com/mcp/v1",
+          "headers": []
+        }
+      }
+    },
+    {
+      "keys": [
+        "docs.google.com/presentation"
+      ],
+      "keywords": [
+        "googleslides",
+        "gslides"
+      ],
+      "server": {
+        "id": "google/slides",
+        "title": "Google Slides",
+        "publisher": "Google",
+        "description": "Read and edit Google Slides.",
+        "setupUrl": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+        "setupNote": "Google needs a Cloud project and OAuth client first.",
+        "install": {
+          "kind": "remote",
+          "transport": "http",
+          "url": "https://slidesmcp.googleapis.com/mcp/v1",
+          "headers": []
+        }
+      }
+    },
+    {
+      "keys": [
+        "calendar.google.com"
+      ],
+      "keywords": [
+        "googlecalendar",
+        "gcal"
+      ],
+      "server": {
+        "id": "google/calendar",
+        "title": "Google Calendar",
+        "publisher": "Google",
+        "description": "Read and manage Google Calendar events.",
+        "setupUrl": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+        "setupNote": "Google needs a Cloud project and OAuth client first.",
+        "install": {
+          "kind": "remote",
+          "transport": "http",
+          "url": "https://calendarmcp.googleapis.com/mcp/v1",
+          "headers": []
+        }
+      }
+    },
+    {
+      "keys": [
+        "chat.google.com",
+        "mail.google.com/chat"
+      ],
+      "keywords": [
+        "googlechat"
+      ],
+      "server": {
+        "id": "google/chat",
+        "title": "Google Chat",
+        "publisher": "Google",
+        "description": "Read and send Google Chat messages.",
+        "setupUrl": "https://developers.google.com/workspace/guides/configure-mcp-servers",
+        "setupNote": "Google needs a Cloud project and OAuth client first.",
+        "install": {
+          "kind": "remote",
+          "transport": "http",
+          "url": "https://chatmcp.googleapis.com/mcp/v1",
+          "headers": []
+        }
+      }
+    }
+  ]
+}
