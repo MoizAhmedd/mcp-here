@@ -30,7 +30,7 @@ const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}`)
 const top = Number(arg('top')?.split('=')[1] ?? 10_000);
 const crawl = !arg('no-crawl');
 
-async function fetchWithRetry(url: string, attempts = 4): Promise<Response> {
+async function fetchWithRetry(url: string, attempts = 6): Promise<Response> {
   for (let attempt = 1; ; attempt++) {
     try {
       const res = await fetch(url, { headers: { 'user-agent': USER_AGENT }, signal: AbortSignal.timeout(30_000) });
@@ -39,6 +39,7 @@ async function fetchWithRetry(url: string, attempts = 4): Promise<Response> {
     } catch (error) {
       if (attempt >= attempts) throw error;
     }
+    // 2s, 4s, 8s, 16s, 32s: rides out short registry outages.
     await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000));
   }
 }

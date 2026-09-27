@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy · MCP Here</title>
+    <link rel="icon" href="img/icon-128.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <a class="brand" href="./"><img src="img/icon-128.png" alt="" />MCP Here</a>
+        <div class="links"><a href="https://github.com/MoizAhmedd/mcp-here">GitHub</a></div>
+      </nav>
+      <main class="doc">
+        <h1>Privacy</h1>
+        <p>Effective September 27, 2026.</p>
+        <p>
+          MCP Here doesn't collect, send, sell or share any information about you or the sites you visit. There are no
+          accounts, analytics or ads. It works entirely in your browser.
+        </p>
+
+        <h2>What it reads</h2>
+        <p>
+          To tell you whether a site has an MCP server, the extension reads the address of https pages you open. It
+          uses that address in your browser only. It never reads page content, form fields or passwords.
+        </p>
+
+        <h2>What it stores on your device</h2>
+        <ul>
+          <li>A list of known MCP servers, grouped by website. This is public data, the same for everyone.</li>
+          <li>
+            For sites you visit, the result of checking that site for a server. It's saved under a scrambled (hashed)
+            key rather than the site's name, and cleared out once it's more than a week old.
+          </li>
+          <li>For sites that have a server, whether you've already seen or hidden the corner button. This is also hashed.</li>
+          <li>Which app you last picked (for example, Claude Code). Chrome syncs this setting across your browsers if you use Chrome sync.</li>
+        </ul>
+
+        <h2>Network requests</h2>
+        <ul>
+          <li>
+            <strong>To the site you're on:</strong> requests for its public <code>/.well-known</code> discovery files, at most
+            once a week per site, without cookies.
+          </li>
+          <li>
+            <strong>To GitHub Pages:</strong> once a week, a download of the public server list from
+            <code>moizahmedd.github.io</code>. GitHub may log the request as described in
+            <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">its privacy statement</a>.
+          </li>
+        </ul>
+        <p>Nothing else is sent anywhere.</p>
+
+        <h2>When you click</h2>
+        <p>
+          Adding a server copies a command to your clipboard, or opens the app you chose (Cursor, VS Code and others)
+          with the server's details. Setup guides and Claude's connector settings open in a new tab.
+        </p>
+
+        <h2>Questions</h2>
+        <p>Open an issue on <a href="https://github.com/MoizAhmedd/mcp-here/issues">GitHub</a>. The source code is public, so you can check all of this there.</p>
+      </main>
+    </div>
+    <footer>
+      <div class="wrap">
+        <span>MCP Here · MIT</span>
+        <span><a href="./">Home</a><a href="https://github.com/MoizAhmedd/mcp-here">GitHub</a></span>
+      </div>
+    </footer>
+  </body>
+</html>

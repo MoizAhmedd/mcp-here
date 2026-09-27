@@ -1,4 +1,3 @@
-import { namespaceDomain } from './domain.ts';
 import type { McpServer } from './types.ts';
 
 export type Trust = 'official' | 'setup' | 'unofficial';
@@ -21,7 +20,9 @@ export function publisherOf(server: McpServer, domain: string): string {
   if (server.source === 'site' || !server.unofficial) return domain;
   const namespace = server.id.split('/')[0] ?? server.id;
   if (namespace.startsWith('io.github.')) return `github.com/${namespace.slice('io.github.'.length)}`;
-  return namespaceDomain(server.id) ?? namespace;
+  // Reverse-DNS namespace → domain (`com.mintmcp` → `mintmcp.com`). Done by hand rather than with
+  // tldts so the page script, which loads on every site, stays small.
+  return namespace.split('.').reverse().join('.');
 }
 
 /** Sites with only third-party servers get a quieter bar: amber, and never opened automatically. */
