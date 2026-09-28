@@ -58,7 +58,7 @@ Everything to paste into the [developer dashboard](https://chrome.google.com/web
 **Permission justifications:**
 
 - **storage:** Saves the public list of MCP servers, the result of checking each site (under a hashed key), whether the user has hidden the corner button on a site, and the user's preferred app.
-- **unlimitedStorage:** The public server list is about 4 MB and grows as more servers are published, which can exceed the default storage quota.
+- **unlimitedStorage:** The public server list is about 7 MB and grows as more servers are published, which can exceed the default storage quota.
 - **alarms:** Refreshes the public server list once a week and clears out old per-site results.
 - **clipboardWrite:** Copies the install command for the chosen app when the user clicks the button.
 - **Host permission (https://\*/\*):** Needed to read the current page's address to match it against the server list, to request that site's public /.well-known MCP discovery files (at most once a week per site, without cookies), and to show the corner button on pages that have a server. Any site can publish an MCP server, so the extension can't list the sites ahead of time.

@@ -7,7 +7,7 @@
     "watch": "node scripts/build.ts --watch",
     "test": "node --test \"test/**/*.test.ts\"",
     "typecheck": "tsc --noEmit -p .",
-    "index": "node scripts/build-index.ts",
+    "index": "UV_THREADPOOL_SIZE=64 node scripts/build-index.ts",
     "zip": "npm run build && cd dist && zip -qr ../mcp-here.zip .",
     "site": "node scripts/build-site.ts"
   },

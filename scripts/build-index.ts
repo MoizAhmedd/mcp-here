@@ -5,6 +5,10 @@
 //   npm run index                      registry + crawl of the top 10,000 sites
 //   npm run index -- --top=500         smaller crawl, for trying it locally
 //   npm run index -- --no-crawl        registry only
+//
+// `npm run index` sets UV_THREADPOOL_SIZE=64. Node resolves DNS on that pool (4 threads by
+// default); with hundreds of requests in flight on a GitHub runner, lookups queued past the
+// request timeout and almost every site failed.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { discoverSite, type Fetcher } from '../src/lib/discovery.ts';
 import {
@@ -20,6 +24,7 @@ import type { McpServer } from '../src/lib/types.ts';
 const REGISTRY = 'https://registry.modelcontextprotocol.io/v0/servers';
 const TRANCO = 'https://tranco-list.eu/api/lists/date/latest';
 const OUT = new URL('../data/index.json', import.meta.url);
+const PUBLISHED = 'https://moizahmedd.github.io/mcp-here/data/index.json';
 const CURATED = new URL('../data/curated.json', import.meta.url);
 /** Popular sites used to match third-party servers by brand name, independent of how many we crawl. */
 const BRAND_SITES = 10_000;
@@ -86,6 +91,21 @@ async function crawlSites(domains: string[]): Promise<Record<string, McpServer[]
   return found;
 }
 
+/**
+ * A crawl that finds far fewer sites than the live index is broken (network trouble on the
+ * runner), not the web changing overnight. Fail instead of publishing it over the good one.
+ */
+async function refuseIfBroken(foundCount: number): Promise<void> {
+  const published = await fetch(PUBLISHED).then((res) => (res.ok ? res.json() : undefined)).catch(() => undefined);
+  if (!published?.domains) return;
+  const before = Object.values(published.domains as Record<string, McpServer[]>).filter((list) =>
+    list.some((server) => server.source === 'site'),
+  ).length;
+  if (foundCount < before / 2) {
+    throw new Error(`Crawl found ${foundCount} sites with servers, but the live index has ${before}. Not publishing.`);
+  }
+}
+
 const curated = (JSON.parse(readFileSync(CURATED, 'utf8')) as { entries: CuratedEntry[] }).entries;
 const [entries, popular] = await Promise.all([registryEntries(), topSites(Math.max(top, BRAND_SITES))]);
 const brands = brandsFromDomains(popular);
@@ -100,6 +120,7 @@ if (crawl) {
   console.log(`crawling ${domains.length} sites`);
   const found = await crawlSites(domains);
   console.log(`crawl: ${Object.keys(found).length} sites publish their own server: ${Object.keys(found).slice(0, 20).join(', ')}`);
+  await refuseIfBroken(Object.keys(found).length);
   index = mergeSiteServers(index, found);
 }
 
