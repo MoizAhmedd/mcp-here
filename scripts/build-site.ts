@@ -1,11 +1,9 @@
 // Writes site/index.html from scripts/landing.template.html.
-// Set STORE_URL once the Chrome Web Store listing is live:
-//   STORE_URL=https://chromewebstore.google.com/detail/... npm run site
 import { readFileSync, writeFileSync } from 'node:fs';
 import { FEATURED, HARNESSES } from '../src/lib/harnesses.ts';
 import { APP_ICONS } from '../src/ui/icons.ts';
 
-const STORE_URL = process.env.STORE_URL ?? 'https://github.com/MoizAhmedd/mcp-here#install';
+const STORE_URL = process.env.STORE_URL ?? 'https://chromewebstore.google.com/detail/mcp-here/jmndkfieljmfdnajhabaejnncnghnnhd';
 const template = readFileSync(new URL('./landing.template.html', import.meta.url), 'utf8');
 
 // The ten named apps, featured first; skip the generic JSON and URL options.
