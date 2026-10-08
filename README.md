@@ -8,6 +8,10 @@ When a site has an MCP server, a small bar shows up in the corner. One click add
 
 ## Install
 
+[Add to Chrome](https://chromewebstore.google.com/detail/mcp-here/jmndkfieljmfdnajhabaejnncnghnnhd) from the Chrome Web Store.
+
+Or build it yourself:
+
 1. `npm install && npm run build`
 2. Open `chrome://extensions`, turn on **Developer mode**
 3. **Load unpacked** → pick `dist/`
