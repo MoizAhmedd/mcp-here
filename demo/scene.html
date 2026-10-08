@@ -1,0 +1,385 @@
+<!doctype html>
+<!--
+  MCP Here's demo, drawn as a scene: render(t) paints the exact frame for time t (seconds), so
+  render.mjs steps through it frame by frame and the video comes out the same every time. Open the
+  file in a browser to watch it loop. Add ?narrow for the tighter cut the landing page shows on phones.
+
+  The corner bar is the extension's own markup and CSS (src/ui/styles.ts, src/ui/icons.ts), drawn at
+  the page's 150% zoom over a screenshot of railway.com. Everything inside #world zooms with the
+  camera; the menu bar, the keycaps and the end card stay put.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MCP Here demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; color: #0f172a;
+         -webkit-font-smoothing: antialiased; position: relative; background: #e9eef5; }
+  .abs { position: absolute; }
+  #world { inset: 0; transform-origin: 0 0;
+           background: radial-gradient(1400px 900px at 15% 0%, #f1f5f9 0%, transparent 60%),
+                       radial-gradient(1200px 900px at 95% 100%, #dbe4f0 0%, transparent 60%), #e9eef5; }
+
+  #menubar { z-index: 2; left: 0; top: 0; width: 1920px; height: 34px; background: rgba(255,255,255,.6); backdrop-filter: blur(20px);
+             display: flex; align-items: center; padding: 0 22px; font-size: 14px; gap: 26px; }
+  #menubar .right { margin-left: auto; }
+
+  /* Chrome, light theme. The page area starts at (40, 148) and is 1840×911 screen px. */
+  .browser { left: 40px; top: 58px; width: 1840px; height: 1001px; border-radius: 12px; overflow: hidden; background: #fff;
+             box-shadow: 0 30px 80px rgba(15,23,42,.22), 0 0 0 1px rgba(15,23,42,.12); }
+  .tabs { height: 42px; background: #dfe3e8; display: flex; align-items: flex-end; padding: 0 12px; gap: 8px; }
+  .lights { display: flex; gap: 8px; align-self: center; margin: 0 18px 0 6px; }
+  .lights span { width: 13px; height: 13px; border-radius: 50%; }
+  .ctab { height: 34px; width: 250px; background: #fff; border-radius: 10px 10px 0 0; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 13px; }
+  .ctab .fav { width: 16px; height: 16px; border-radius: 50%; background: #13111c; display: grid; place-items: center; }
+  .ctab .fav i { width: 9px; height: 2px; background: #fff; border-radius: 1px; box-shadow: 0 -3px 0 #fff, 0 3px 0 #fff; }
+  .ctab .x { margin-left: auto; color: #5f6368; font-size: 15px; }
+  .toolbar { height: 48px; display: flex; align-items: center; gap: 18px; padding: 0 16px; border-bottom: 1px solid #e3e6ea; color: #5f6368; font-size: 18px; }
+  .omni { flex: 1; height: 34px; border-radius: 17px; background: #eef1f4; display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 15px; color: #202124; }
+  .omni .lock { width: 13px; height: 13px; color: #5f6368; }
+  .ext { width: 22px; height: 22px; border-radius: 5px; }
+  .page { left: 0; top: 90px; width: 1840px; height: 911px; }
+
+  /* The extension's UI, at the page's zoom. Positioned like its fixed .wrap, inside the page area. */
+  #page-ui { left: 40px; top: 148px; width: 1227px; height: 607px; transform: scale(1.5); transform-origin: 0 0; }
+  #mh { position: absolute; right: 20px; bottom: 20px; }
+
+  /* Terminal, for the payoff. */
+  #term { left: 250px; top: 330px; width: 1100px; height: 290px; border-radius: 12px; overflow: hidden; background: #16181d;
+          box-shadow: 0 30px 80px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.08); }
+  #term .tbar { height: 40px; background: #23262d; display: flex; align-items: center; gap: 8px; padding: 0 16px; }
+  #term .tbar b { flex: 1; text-align: center; font: 500 14px -apple-system, sans-serif; color: #9aa0a8; margin-right: 60px; }
+  #term pre { padding: 22px 26px; font: 21px/1.6 ui-monospace, "SF Mono", Menlo, monospace; color: #e6e6e6; white-space: pre-wrap; word-break: break-all; }
+  #term pre * { font: inherit; }
+  #term .p { color: #22c55e; }
+  #term .dim { color: #8b929c; }
+  .tcaret { display: inline-block; width: 11px; height: 24px; background: #e6e6e6; vertical-align: -5px; }
+
+  #pointer { width: 28px; height: 40px; transform-origin: 3px 2px; z-index: 5; }
+  #ripple { width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 3px solid rgba(34,197,94,.8); z-index: 5; }
+
+  /* Keys pressed, so it makes sense muted. */
+  #keys { left: 0; right: 0; bottom: 56px; display: flex; justify-content: center; gap: 10px; z-index: 3; }
+  .key { min-width: 64px; height: 64px; padding: 0 14px; border-radius: 13px; background: rgba(17,24,39,.88); color: #fff; font-size: 28px;
+         display: grid; place-items: center; box-shadow: 0 8px 24px rgba(0,0,0,.25); font-weight: 500; }
+
+  #end { z-index: 4; inset: 0; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; }
+  #end img { width: 112px; height: 112px; border-radius: 26px; }
+  #end h2 { font: 700 104px/1.05 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: -3px; text-align: center; }
+  #end p { font-size: 34px; color: #64748b; }
+  #end .cta { margin-top: 8px; display: flex; align-items: center; gap: 16px; background: #111827; color: #fff; font-size: 32px; font-weight: 600;
+              padding: 22px 36px; border-radius: 18px; box-shadow: 0 12px 36px rgba(15,23,42,.2); }
+  #end .cta img { width: 36px; height: 36px; border-radius: 0; }
+</style>
+<style id="bar-css">
+
+:host { all: initial; }
+* { box-sizing: border-box; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+.wrap {
+  --mh-hover: #f3f4f6; --mh-muted: #9ca3af; --mh-border: #f0f0f0;
+  position: fixed; right: 20px; bottom: 20px; z-index: 2147483647;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  line-height: 1.4; -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; }
+.bar {
+  display: flex; align-items: center; gap: 10px; background: #111827; color: #fff;
+  border-radius: 14px; padding: 8px 8px 8px 12px; font-size: 13px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.25), 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+.lead { display: flex; align-items: center; gap: 8px; color: #d1d5db; white-space: nowrap; }
+.lead b { color: #fff; font-weight: 600; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgb(34 197 94 / 0.2); flex: none; }
+.split { display: flex; border-radius: 9px; overflow: hidden; }
+.split button {
+  all: unset; cursor: pointer; background: #fff; color: #111827; font-size: 13px; font-weight: 600;
+  padding: 7px 10px; display: flex; align-items: center; gap: 7px; white-space: nowrap;
+}
+.split button:hover, .split button:focus-visible { background: #f3f4f6; }
+.split .caret { border-left: 1px solid #e5e7eb; padding: 7px 8px; }
+.split .caret svg { width: 14px; height: 14px; }
+.close { all: unset; cursor: pointer; color: #6b7280; padding: 4px; display: flex; border-radius: 6px; }
+.close:hover, .close:focus-visible { color: #fff; }
+.close svg { width: 14px; height: 14px; }
+.menu {
+  width: 300px; max-height: calc(100vh - 110px); overflow-y: auto;
+  background: #fff; color: #111827; border-radius: 14px; padding: 6px;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.22), 0 0 0 1px rgb(0 0 0 / 0.06);
+}
+.menu-head { padding: 8px 10px 6px; color: #6b7280; font-size: 12px; }
+.section { padding: 8px 10px 4px; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.pick {
+  all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 10px; border-radius: 9px; font-size: 13px;
+}
+.pick:hover, .pick:focus-visible, .pick[aria-pressed='true'] { background: #f3f4f6; }
+.pick-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-by { color: #6b7280; font-weight: 400; }
+.dot.amber { background: #f59e0b; box-shadow: 0 0 0 3px rgb(245 158 11 / 0.2); }
+.split .main > svg { width: 16px; height: 16px; }
+.tab {
+  all: unset; cursor: pointer; position: relative; display: grid; place-items: center;
+  width: 40px; height: 40px; border-radius: 12px; background: #111827; color: #fff;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+.tab svg { width: 18px; height: 18px; }
+.tab .dot { position: absolute; top: 6px; right: 6px; }
+
+.apps { display: flex; flex-direction: column; gap: 1px; }
+.app {
+  all: unset; box-sizing: border-box; cursor: pointer;
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 10px; border-radius: 9px; font-size: 13px; color: inherit;
+}
+.app:hover, .app:focus-visible { background: var(--mh-hover); }
+.app.selected { background: var(--mh-hover); }
+.app-icon { width: 18px; height: 18px; display: grid; place-items: center; flex: none; }
+.app-icon svg { width: 18px; height: 18px; }
+.app-name { flex: 1; }
+.app-note { color: var(--mh-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.app-kind { color: var(--mh-muted); display: flex; }
+.app-kind svg { width: 14px; height: 14px; }
+.app.more { color: var(--mh-muted); }
+.app.more > svg { width: 14px; height: 14px; margin: 0 2px; }
+.divider { height: 1px; background: var(--mh-border); margin: 4px 6px; }
+
+.tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.tag.official { background: #dcfce7; color: #166534; }
+.tag.setup { background: #dbeafe; color: #1e40af; }
+.tag.unofficial { background: #fef3c7; color: #92400e; }
+.note { margin: 2px 6px 6px; padding: 8px 10px; border-radius: 9px; font-size: 12px; line-height: 1.4; background: #fffbeb; color: #92400e; }
+.note.setup { background: #eff6ff; color: #1e40af; }
+.note button { all: unset; cursor: pointer; text-decoration: underline; }
+
+.toast {
+  display: flex; align-items: center; gap: 10px; box-sizing: border-box;
+  background: #111827; color: #fff; border-radius: 14px; padding: 10px 12px; font-size: 13px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.25); max-width: 380px;
+}
+.toast-body { min-width: 0; }
+.toast-code {
+  display: block; margin-top: 2px; color: #9ca3af; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toast-check { width: 20px; height: 20px; border-radius: 50%; background: #22c55e; display: grid; place-items: center; flex: none; }
+.toast-check svg { width: 12px; height: 12px; color: #fff; }
+
+
+</style>
+</head>
+<body>
+
+<div id="menubar" class="abs"><b>Google Chrome</b><span>File</span><span>Edit</span><span>View</span><span>History</span><span class="right">Thu Oct 8&nbsp;&nbsp;9:41 AM</span></div>
+
+<div id="world" class="abs">
+  <div class="abs browser">
+    <div class="tabs">
+      <div class="lights"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div>
+      <div class="ctab"><span class="fav"><i></i></span>Railway<span class="x">×</span></div>
+    </div>
+    <div class="toolbar">
+      <span>←</span><span>→</span><span>↻</span>
+      <div class="omni"><svg class="lock" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>railway.com</div>
+      <img class="ext" src="../site/img/icon-128.png" alt="">
+    </div>
+    <img class="abs page" src="railway.png" alt="">
+  </div>
+
+  <div id="page-ui" class="abs"><div id="mh" class="wrap"></div></div>
+
+  <div id="term" class="abs">
+    <div class="tbar"><span style="width:13px;height:13px;border-radius:50%;background:#ff5f57"></span><span style="width:13px;height:13px;border-radius:50%;background:#febc2e"></span><span style="width:13px;height:13px;border-radius:50%;background:#28c840"></span><b>Terminal — zsh</b></div>
+    <pre id="tty"></pre>
+  </div>
+
+  <div id="ripple" class="abs"></div>
+  <svg id="pointer" class="abs" viewBox="0 0 28 40"><path d="M3 2v29l7.5-7 5 11.5 5-2.2-5-11.3H26z" fill="#000" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+
+<div id="keys" class="abs"></div>
+<div id="end" class="abs">
+  <img src="../site/img/icon-128.png" alt="">
+  <h2>Stumble onto MCP servers.</h2>
+  <p>One click adds them to your agent.</p>
+  <div class="cta"><img src="../site/img/chrome.svg" alt="">Add to Chrome, it's free</div>
+</div>
+
+<!-- The extension's views, as content.ts and apps.ts build them for railway.com. -->
+<template id="v-bar">
+  <div class="bar">
+    <span class="lead"><span class="dot"></span><span><b>Railway</b> has an MCP server</span></span>
+    <div class="split">
+      <button class="main"><span class="app-icon"><svg aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z" fill="#D97757" fill-rule="nonzero"></path></svg></span>Add to Claude Code</button>
+      <button class="caret"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button>
+    </div>
+    <button class="close"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+  </div>
+</template>
+<template id="v-menu">
+  <div class="menu">
+    <div class="menu-head">Add Railway MCP to…</div>
+    <div class="apps">
+      <button class="app selected" data-row="0"><span class="app-icon"><svg aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z" fill="#D97757" fill-rule="nonzero"></path></svg></span><span class="app-name">Claude Code</span><span class="app-kind"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span></button>
+      <button class="app" data-row="1"><span class="app-icon"><svg aria-hidden="true" fill="currentColor" fill-rule="evenodd" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.106 5.68L12.5.135a.998.998 0 00-.998 0L1.893 5.68a.84.84 0 00-.419.726v11.186c0 .3.16.577.42.727l9.607 5.547a.999.999 0 00.998 0l9.608-5.547a.84.84 0 00.42-.727V6.407a.84.84 0 00-.42-.726zm-.603 1.176L12.228 22.92c-.063.108-.228.064-.228-.061V12.34a.59.59 0 00-.295-.51l-9.11-5.26c-.107-.062-.063-.228.062-.228h18.55c.264 0 .428.286.296.514z"></path></svg></span><span class="app-name">Cursor</span><span class="app-kind"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg></span></button>
+      <button class="app" data-row="2"><span class="app-icon"><svg aria-hidden="true" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#0078d4"><path d="M15.434 1.72887L12.14 0.144875C12.002 0.078875 11.855 0.046875 11.709 0.046875C11.353 0.046875 11.18 0.211875 11.155 0.228875C11.073 0.270875 11.005 0.337875 11.004 0.338875L4.698 6.08888L1.951 4.00488C1.832 3.91388 1.69 3.86987 1.548 3.86987C1.387 3.86987 1.226 3.92788 1.1 4.04288L0.219 4.84387C0.074 4.97587 0.001 5.15688 0.001 5.33687C0.001 5.51687 0.073 5.69688 0.218 5.82888L2.6 8.00088L0.217 10.1719C0.072 10.3039 0 10.4839 0 10.6639C0 10.8439 0.073 11.0249 0.218 11.1569L1.099 11.9579C1.226 12.0729 1.386 12.1309 1.547 12.1309C1.688 12.1309 1.83 12.0859 1.95 11.9959L4.697 9.91187L11.003 15.6619C11.003 15.6619 11.072 15.7299 11.155 15.7719C11.179 15.7889 11.353 15.9529 11.709 15.9529C11.855 15.9529 12.003 15.9209 12.141 15.8549L15.435 14.2709C15.781 14.1049 16.001 13.7539 16.001 13.3699V2.62888C16.001 2.24487 15.781 1.89488 15.435 1.72787L15.434 1.72887ZM7.217 7.99988L12.002 4.36987V11.6299L7.217 7.99988Z"/></svg></span><span class="app-name">VS Code</span><span class="app-kind"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg></span></button>
+      <button class="app" data-row="3"><span class="app-icon"><svg aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z" fill="#D97757" fill-rule="nonzero"></path></svg></span><span class="app-name">Claude</span><span class="app-kind"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span></button>
+      <button class="app" data-row="4"><span class="app-icon"><svg aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19.503 0H4.496A4.496 4.496 0 000 4.496v15.007A4.496 4.496 0 004.496 24h15.007A4.496 4.496 0 0024 19.503V4.496A4.496 4.496 0 0019.503 0z" fill="#fff"></path><path d="M9.064 3.344a4.578 4.578 0 012.285-.312c1 .115 1.891.54 2.673 1.275.01.01.024.017.037.021a.09.09 0 00.043 0 4.55 4.55 0 013.046.275l.047.022.116.057a4.581 4.581 0 012.188 2.399c.209.51.313 1.041.315 1.595a4.24 4.24 0 01-.134 1.223.123.123 0 00.03.115c.594.607.988 1.33 1.183 2.17.289 1.425-.007 2.71-.887 3.854l-.136.166a4.548 4.548 0 01-2.201 1.388.123.123 0 00-.081.076c-.191.551-.383 1.023-.74 1.494-.9 1.187-2.222 1.846-3.711 1.838-1.187-.006-2.239-.44-3.157-1.302a.107.107 0 00-.105-.024c-.388.125-.78.143-1.204.138a4.441 4.441 0 01-1.945-.466 4.544 4.544 0 01-1.61-1.335c-.152-.202-.303-.392-.414-.617a5.81 5.81 0 01-.37-.961 4.582 4.582 0 01-.014-2.298.124.124 0 00.006-.056.085.085 0 00-.027-.048 4.467 4.467 0 01-1.034-1.651 3.896 3.896 0 01-.251-1.192 5.189 5.189 0 01.141-1.6c.337-1.112.982-1.985 1.933-2.618.212-.141.413-.251.601-.33.215-.089.43-.164.646-.227a.098.098 0 00.065-.066 4.51 4.51 0 01.829-1.615 4.535 4.535 0 011.837-1.388zm3.482 10.565a.637.637 0 000 1.272h3.636a.637.637 0 100-1.272h-3.636zM8.462 9.23a.637.637 0 00-1.106.631l1.272 2.224-1.266 2.136a.636.636 0 101.095.649l1.454-2.455a.636.636 0 00.005-.64L8.462 9.23z" fill="url(#lobe-icons-codex-_R_0_)"></path><defs><linearGradient gradientUnits="userSpaceOnUse" id="lobe-icons-codex-_R_0_" x1="12" x2="12" y1="3" y2="21"><stop stop-color="#B1A7FF"></stop><stop offset=".5" stop-color="#7A9DFF"></stop><stop offset="1" stop-color="#3941FF"></stop></linearGradient></defs></svg></span><span class="app-name">Codex</span><span class="app-kind"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span></button>
+      <button class="app" data-row="5"><span class="app-icon"><svg aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="#3186FF"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#lobe-icons-gemini-0-_R_0_)"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#lobe-icons-gemini-1-_R_0_)"></path><path d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z" fill="url(#lobe-icons-gemini-2-_R_0_)"></path><defs><linearGradient gradientUnits="userSpaceOnUse" id="lobe-icons-gemini-0-_R_0_" x1="7" x2="11" y1="15.5" y2="12"><stop stop-color="#08B962"></stop><stop offset="1" stop-color="#08B962" stop-opacity="0"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="lobe-icons-gemini-1-_R_0_" x1="8" x2="11.5" y1="5.5" y2="11"><stop stop-color="#F94543"></stop><stop offset="1" stop-color="#F94543" stop-opacity="0"></stop></linearGradient><linearGradient gradientUnits="userSpaceOnUse" id="lobe-icons-gemini-2-_R_0_" x1="3.5" x2="17.5" y1="13.5" y2="12"><stop stop-color="#FABC12"></stop><stop offset=".46" stop-color="#FABC12" stop-opacity="0"></stop></linearGradient></defs></svg></span><span class="app-name">Gemini CLI</span><span class="app-kind"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span></button>
+      <div class="divider"></div>
+      <button class="app more"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg><span class="app-name">More apps</span><span class="app-note">Windsurf, Goose, LM Studio…</span></button>
+    </div>
+  </div>
+</template>
+<template id="v-toast">
+  <div class="toast">
+    <span class="toast-check"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-10"/></svg></span>
+    <div class="toast-body"><div class="toast-title">Copied. Paste it in your terminal.</div><code class="toast-code">claude mcp add --scope user --transport http railway https://mcp.railway.com/</code></div>
+  </div>
+</template>
+
+<script>
+const W = 1920, H = 1080;
+const DURATION = 13.5;
+const NARROW = location.search.includes('narrow');
+
+// Screen coordinates of what the pointer touches, measured from the drawn UI (node stills.mjs prints them with ?measure).
+const AT = {
+  caret: [1767, 992],
+  rows: { top: 578, height: 52.8, x: 1560 },   // Claude Code's row; each next row is `height` lower
+  term: [820, 540],
+};
+const COMMAND = 'claude mcp add --scope user --transport http railway https://mcp.railway.com/';
+
+// The timeline, in seconds and screen coordinates.
+const BAR_IN = 1.4;
+const MENU = 3.55, PICK = 6.0;
+const TERM_IN = 7.2, PASTE = 8.4, ENTER = 9.4, OUTPUT = 9.75;
+const END = 11.6;
+const row = (i) => AT.rows.top + AT.rows.height * i;
+const CURSOR = [
+  [0, 900, 700], [0.9, 1010, 640], [1.7, 1010, 640],    // browsing railway.com
+  [2.9, ...AT.caret], [3.6, ...AT.caret],                // the caret
+  [4.3, AT.rows.x, row(1)], [4.7, AT.rows.x, row(2)],    // looking down the list
+  [5.1, AT.rows.x, row(2)], [5.8, AT.rows.x, row(0)], [6.4, AT.rows.x, row(0)],  // Claude Code
+  [7.6, ...AT.term], [DURATION, ...AT.term],             // into the terminal
+];
+const CLICKS = [MENU, PICK, 7.75];
+const KEYS = [{ t: PASTE - 0.15, keys: ['⌘', 'V'] }, { t: ENTER - 0.15, keys: ['return ↩'] }];
+// The camera [t, zoom, focus x, focus y]: in ~0.6 s before each action, hold through it, out between scenes.
+const CAMERA = NARROW ? [
+  [0, 1, 960, 540], [1.3, 1, 960, 540],
+  [2.2, 2.3, 1500, 1000], [3.7, 2.3, 1500, 1000],
+  [4.2, 2.3, 1520, 705], [6.0, 2.3, 1520, 705],
+  [6.5, 2.3, 1500, 1000], [7.0, 2.3, 1500, 1000],   // the toast
+  [7.6, 1, 960, 540],
+  [8.2, 1.75, 800, 475], [11.2, 1.75, 800, 475],
+] : [
+  [0, 1, 960, 540], [1.4, 1, 960, 540],
+  [2.2, 1.7, 1500, 900], [6.4, 1.7, 1500, 900],
+  [7.0, 1, 960, 540], [7.6, 1, 960, 540],
+  [8.2, 1.5, 800, 475], [11.2, 1.5, 800, 475],
+];
+
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const ease = (x) => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const lerp = (a, b, x) => a + (b - a) * x;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const pulse = (t, a, b, fade = 0.15) => Math.min(seg(t, a, a + fade), 1 - seg(t, b - fade, b));
+
+function track(keys, t) {
+  let i = 0;
+  while (i < keys.length - 1 && t >= keys[i + 1][0]) i++;
+  const a = keys[i], b = keys[Math.min(i + 1, keys.length - 1)];
+  const x = a === b ? 0 : ease(seg(t, a[0], b[0]));
+  return a.slice(1).map((v, j) => lerp(v, b[j + 1], x));
+}
+
+const tpl = (id) => $(id).innerHTML;
+let shown = '';  // cache: which view #mh holds, so it is only rebuilt when the view changes
+function setView(view) {
+  if (view === shown) return;
+  shown = view;
+  $('mh').innerHTML = view === 'toast' ? tpl('v-toast') : view === 'menu' ? tpl('v-menu') + tpl('v-bar') : view === 'bar' ? tpl('v-bar') : '';
+}
+
+function render(t) {
+  const [s, fx, fy] = track(CAMERA, t);
+  const tx = clamp(W / 2 - fx * s, W - W * s, 0), ty = clamp(H / 2 - fy * s, H - H * s, 0);
+  $('world').style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+
+  const [cx, cy] = track(CURSOR, t);
+  const click = CLICKS.find((c) => t >= c && t < c + 0.45);
+  const pointer = $('pointer');
+  pointer.style.left = (cx - 3) + 'px'; pointer.style.top = (cy - 2) + 'px';
+  pointer.style.transform = click !== undefined && t < click + 0.12 ? 'scale(.85)' : 'none';
+  const ripple = $('ripple');
+  if (click !== undefined) {
+    const x = seg(t, click, click + 0.45);
+    Object.assign(ripple.style, { display: 'block', left: cx + 'px', top: cy + 'px', opacity: 0.8 * (1 - x), transform: `scale(${0.4 + 1.2 * ease(x)})` });
+  } else ripple.style.display = 'none';
+
+  // The corner bar: slides in, opens the menu, then shows the toast.
+  setView(t < BAR_IN ? 'none' : t < MENU ? 'bar' : t < PICK + 0.1 ? 'menu' : 'toast');
+  const mh = $('mh');
+  const fade = t < PICK ? seg(t, BAR_IN, BAR_IN + 0.35) : seg(t, PICK + 0.1, PICK + 0.35);
+  mh.style.opacity = fade;
+  mh.style.transform = `translateY(${(1 - ease(fade)) * 12}px)`;
+  if (shown === 'menu') {
+    // Hover follows the pointer; the press shows on the picked row.
+    const hover = Math.round((cy - AT.rows.top) / AT.rows.height);
+    mh.querySelectorAll('.app[data-row]').forEach((b) => {
+      const i = Number(b.dataset.row);
+      b.style.background = i === hover && cx > 1200 ? '#f3f4f6' : i === 0 ? '#f3f4f6' : '';
+      b.style.transform = i === 0 && t >= PICK && t < PICK + 0.12 ? 'scale(.98)' : '';
+    });
+    const caret = mh.querySelector('.caret');
+    caret.style.background = '#f3f4f6';
+  }
+
+  // Terminal: slides up, the command pastes in, then Claude Code's answer.
+  const term = $('term');
+  const ta = seg(t, TERM_IN, TERM_IN + 0.35);
+  term.style.display = ta > 0 ? 'block' : 'none';
+  term.style.opacity = ta;
+  term.style.transform = `translateY(${(1 - ease(ta)) * 30}px)`;
+  const blink = Math.floor(t * 2) % 2 === 0 ? '<span class="tcaret"></span>' : '';
+  let tty = '<span class="dim">~</span> <span class="p">❯</span> ' + (t >= PASTE ? COMMAND : '');
+  if (t < OUTPUT) tty += blink;
+  else tty += '\n' + 'Added HTTP MCP server railway with URL: https://mcp.railway.com/ to user config\n'
+    + '<span class="dim">File modified: /Users/you/.claude.json</span>\n<span class="dim">~</span> <span class="p">❯</span> ' + blink;
+  if ($('tty').innerHTML !== tty) $('tty').innerHTML = tty;
+
+  const k = KEYS.find((k) => t >= k.t && t < k.t + 0.9);
+  const keysEl = $('keys');
+  const html = k ? k.keys.map((key) => `<span class="key">${key}</span>`).join('') : '';
+  if (keysEl.innerHTML !== html) keysEl.innerHTML = html;
+  keysEl.style.opacity = k ? pulse(t, k.t, k.t + 0.9, 0.15) : 0;
+
+  const end = $('end');
+  const ea = seg(t, END, END + 0.45);
+  end.style.display = ea > 0 ? 'flex' : 'none';
+  end.style.opacity = ea;
+}
+
+// ?measure: log the screen rects of the controls the pointer touches, to fill in AT.
+function measure() {
+  const r = (el) => { const b = el.getBoundingClientRect(); return [Math.round(b.left + b.width / 2), Math.round(b.top + b.height / 2), Math.round(b.width), Math.round(b.height)]; };
+  render(MENU + 0.5);
+  $('world').style.transform = 'none';
+  const out = { caret: r($('mh').querySelector('.caret')), rows: [...$('mh').querySelectorAll('.app[data-row]')].map(r) };
+  return JSON.stringify(out);
+}
+
+window.DURATION = DURATION;
+window.render = render;
+window.measure = measure;
+if (!location.search.includes('capture')) {
+  const t0 = performance.now();
+  (function loop() { render(((performance.now() - t0) / 1000) % (DURATION + 1)); requestAnimationFrame(loop); })();
+} else render(0);
+</script>
+</body>
+</html>
