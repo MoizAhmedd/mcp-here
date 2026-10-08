@@ -38,11 +38,9 @@ nav .links a:hover { color: var(--fg); }
 .sub-cta { display: block; margin-top: 12px; font-size: 14px; color: var(--muted); }
 
 .frame {
-  margin: 48px auto 0; border-radius: 14px; overflow: hidden; background: #1e1e24;
+  margin: 48px auto 0; border-radius: 14px; overflow: hidden; background: #e9eef5;
   box-shadow: 0 30px 80px rgb(15 23 42 / 0.25), 0 0 0 1px rgb(15 23 42 / 0.08);
 }
-.frame .chrome { display: flex; gap: 7px; padding: 12px 14px; background: #2a2a31; }
-.frame .chrome span { width: 11px; height: 11px; border-radius: 50%; background: #4b4b55; }
 
 section { padding: 88px 0; }
 section h2 { font-size: 34px; letter-spacing: -0.02em; margin: 0 0 12px; text-align: center; }
