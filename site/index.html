@@ -27,7 +27,7 @@
       <header class="hero">
         <h1>Stumble onto MCP servers.</h1>
         <p>When a site has an MCP server, MCP Here shows it. One click adds it to your agent.</p>
-        <a class="cta" href="https://chromewebstore.google.com/detail/mcp-here/jmndkfieljmfdnajhabaejnncnghnnhd"><img src="img/chrome.svg" alt="" />Add to Chrome, it's free</a>
+        <a class="cta" href="https://chromewebstore.google.com/detail/mcp-here/jmndkfieljmfdnajhabaejnncnghnnhd"><img src="img/chrome.svg" alt="" />Add to Chrome</a>
         <div class="frame">
           <video class="wide" src="img/demo.mp4" poster="img/demo-poster.jpg" autoplay muted loop playsinline></video>
           <video class="narrow" src="img/demo-zoom.mp4" poster="img/demo-zoom-poster.jpg" autoplay muted loop playsinline></video>
@@ -78,7 +78,7 @@
       <div class="wrap">
         <h2>If an agent can do it, let it.</h2>
         <p class="lead">Find the MCP server without going looking.</p>
-        <a class="cta" href="https://chromewebstore.google.com/detail/mcp-here/jmndkfieljmfdnajhabaejnncnghnnhd"><img src="img/chrome.svg" alt="" />Add to Chrome, it's free</a>
+        <a class="cta" href="https://chromewebstore.google.com/detail/mcp-here/jmndkfieljmfdnajhabaejnncnghnnhd"><img src="img/chrome.svg" alt="" />Add to Chrome</a>
       </div>
     </section>
 
@@ -88,5 +88,12 @@
         <span><a href="privacy.html">Privacy</a><a href="https://github.com/MoizAhmedd/mcp-here">GitHub</a></span>
       </div>
     </footer>
+    <script>
+      // Low Power Mode and Data Saver block autoplay; start the demo on the first touch instead.
+      const demos = document.querySelectorAll('.frame video');
+      const play = () => demos.forEach((v) => v.offsetParent && v.paused && v.play().catch(() => {}));
+      play();
+      addEventListener('touchstart', play, { once: true, passive: true });
+    </script>
   </body>
 </html>
