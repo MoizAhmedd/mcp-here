@@ -47,6 +47,7 @@ async function fetchWithRetry(url: string, attempts = 6, timeoutMs = 30_000): Pr
     try {
       const res = await fetch(url, { headers: { 'user-agent': USER_AGENT }, signal: AbortSignal.timeout(timeoutMs) });
       if (res.ok) return res;
+      await res.body?.cancel();
       if (attempt >= attempts || res.status < 500) throw new Error(`${res.status} from ${url}`);
     } catch (error) {
       if (attempt >= attempts) throw error;

@@ -113,9 +113,12 @@ async function fetchJson(fetcher: Fetcher, url: string): Promise<unknown> {
       // Some servers only answer their exact media type (GitHub 406s on plain application/json).
       headers: { accept: 'application/json, application/*+json, */*;q=0.8' },
     });
-    if (!res.ok) return undefined;
+    // Release bodies we won't read: in Node, unread bodies pile up and can crash the process.
     const length = Number(res.headers.get('content-length') ?? 0);
-    if (length > MAX_BYTES) return undefined;
+    if (!res.ok || length > MAX_BYTES) {
+      await res.body?.cancel();
+      return undefined;
+    }
     const text = await res.text();
     if (text.length > MAX_BYTES) return undefined;
     return JSON.parse(text);

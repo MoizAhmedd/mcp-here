@@ -66,6 +66,21 @@ test('ignores HTML, junk and unsafe endpoints', async () => {
   assert.deepEqual(await discoverSite('example.com', offline), []);
 });
 
+test('cancels the bodies of responses it skips', async () => {
+  const responses: Response[] = [];
+  const skipped = async (url: string) => {
+    const res = url.endsWith('mcp.json')
+      ? new Response('{}', { headers: { 'content-length': String(10 ** 9) } })
+      : new Response('Not found', { status: 404 });
+    responses.push(res);
+    return res;
+  };
+  assert.deepEqual(await discoverSite('example.com', skipped), []);
+  assert.equal(responses.length, DISCOVERY_PATHS.length);
+  // A cancelled stream reads as already finished.
+  for (const res of responses) assert.equal((await res.body!.getReader().read()).done, true);
+});
+
 test('handles SEP-1960 style endpoint manifests', () => {
   const { servers } = parseDiscoveryDoc({ name: 'Acme', endpoints: [{ url: 'https://mcp.acme.dev/mcp', transport: 'http' }] }, 'x');
   assert.equal(servers[0]?.title, 'Acme');
